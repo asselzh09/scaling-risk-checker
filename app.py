@@ -162,7 +162,7 @@ if mode == t["manual_finance"]:
     orders = st.number_input(t["orders"], min_value=1)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
 
--------------------------------
+# -------------------------------
 # Upload CSV
 elif mode == t["meta_csv"]:
     uploaded = st.file_uploader("Upload CSV", type=["csv"])
