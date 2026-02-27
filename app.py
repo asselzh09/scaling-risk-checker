@@ -161,40 +161,71 @@ elif mode == t["manual_funnel"]:
     ad_spend = spend
 
 # =========================
-# CSV Upload
+# CSV Upload (Meta-safe)
 # =========================
 elif mode == t["csv"]:
+
+    from io import StringIO
+
+    def read_meta_csv(uploaded_file):
+        raw = uploaded_file.getvalue().decode("utf-8", errors="ignore")
+        lines = raw.splitlines()
+
+        header_idx = 0
+        for i, line in enumerate(lines[:200]):
+            if ("Campaign delivery" in line and "Results" in line) or \
+               ("Amount spent" in line and "Results" in line):
+                header_idx = i
+                break
+
+        table = "\n".join(lines[header_idx:])
+        return pd.read_csv(StringIO(table), sep=None, engine="python")
+
     uploaded = st.file_uploader("Upload CSV", type=["csv"])
 
-    if uploaded:
-        df = pd.read_csv(uploaded)
+    if not uploaded:
+        st.info("Upload Meta export CSV.")
+        st.stop()
 
-        st.write("Preview:")
-        st.dataframe(df.head())
+    df = read_meta_csv(uploaded)
 
-        columns = df.columns.tolist()
+    st.write("Preview:")
+    st.dataframe(df.head(), use_container_width=True)
 
-        spend_col = st.selectbox("Spend column", columns)
-        results_col = st.selectbox("Results column", columns)
+    # ---------- auto column detection ----------
+    def pick_col(df, keywords):
+        for col in df.columns:
+            for k in keywords:
+                if k.lower() in col.lower():
+                    return col
+        return None
 
-        meta_spend = pd.to_numeric(df[spend_col], errors="coerce").fillna(0).sum()
-        meta_results = pd.to_numeric(df[results_col], errors="coerce").fillna(0).sum()
+    spend_col = pick_col(df, ["Amount spent", "Spend"])
+    results_col = pick_col(df, ["Results"])
 
-        st.write(f"Total Spend: {meta_spend}")
-        st.write(f"Total Results: {meta_results}")
+    if not spend_col or not results_col:
+        st.error("Could not auto-detect Spend or Results column.")
+        st.stop()
 
-        if meta_results > 0:
-            close_rate = st.number_input(t["close_rate"], 0.0, 1.0, 0.2)
-            AOV = st.number_input(t["aov"], min_value=0.0)
-            cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
-            refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
+    meta_spend = pd.to_numeric(df[spend_col], errors="coerce").fillna(0).sum()
+    meta_results = pd.to_numeric(df[results_col], errors="coerce").fillna(0).sum()
 
-            orders = max(meta_results * close_rate, 1)
-            revenue = AOV * orders
-            cogs = cogs_per_order * orders
-            ad_spend = meta_spend
-        else:
-            st.warning("Results column sums to 0.")
+    st.write(f"Total Spend: {round(meta_spend,2)}")
+    st.write(f"Total Results: {int(meta_results)}")
+
+    if meta_results <= 0:
+        st.warning("Results column sums to 0. Check your export.")
+        st.stop()
+
+    close_rate = st.number_input(t["close_rate"], 0.0, 1.0, 0.2)
+    AOV = st.number_input(t["aov"], min_value=0.0)
+    cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
+    refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
+
+    orders = max(meta_results * close_rate, 1)
+    revenue = AOV * orders
+    cogs = cogs_per_order * orders
+    ad_spend = meta_spend
 
 # =========================
 # Scaling Inputs
