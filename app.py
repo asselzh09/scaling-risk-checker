@@ -3,11 +3,12 @@ import pandas as pd
 
 st.set_page_config(page_title="Scaling Risk Checker", layout="centered")
 
-# -----------------------------
+# =========================
 # Language (UI only)
-# -----------------------------
-LANG = st.selectbox("Language / Язык", ["English", "Русский"])
-TR = {
+# =========================
+lang = st.selectbox("Language / Язык", ["English", "Русский"])
+
+T = {
     "English": {
         "title": "Scaling Risk Checker",
         "subtitle": "Upload Meta export or input manually. Then simulate spend scaling with efficiency deterioration.",
@@ -15,59 +16,68 @@ TR = {
         "m_manual": "Manual finance",
         "m_csv": "Meta CSV upload",
         "m_funnel": "Manual funnel (Meta-like)",
+
+        "rev": "Total Revenue ($)",
+        "cogs": "Total COGS ($)",
+        "spend": "Ad Spend ($)",
+        "orders": "Orders",
+        "refund": "Refund Rate (%)",
+
         "upload_meta": "Upload Meta export",
         "upload_csv": "Upload CSV",
         "upload_hint": "Upload your Meta export CSV to auto-fill Spend + Conversations. You'll still input AOV/COGS + close rate.",
         "preview": "Preview",
-        "derived": "### Derived from CSV",
-        "bridge": "Bridge Meta → Finance",
-        "campaign_col": "Campaign name column",
+
+        "camp_col": "Campaign name column",
         "spend_col": "Spend column",
         "results_col": "Results column",
         "indicator_col": "Result indicator column",
         "select_campaigns": "Select campaigns to include",
-        "no_msg_rows": "No rows found where Result indicator contains 'messaging_conversation_started'.",
-        "conv_zero": "Conversations sum to 0. Can't proceed.",
-        "cpa_msg": "CPA (message conversation)",
+
+        "derived": "### Derived from CSV",
+        "bridge": "Bridge Meta → Finance",
+
         "close_rate": "Close rate (orders / conversations)",
         "aov": "AOV ($) (average order value)",
         "cogs_po": "COGS per order ($)",
-        "refund": "Refund Rate (%)",
-        "warn_orders": "Inferred orders < 1. Close rate might be too low or dataset too small. I’ll still run with Orders=1 to avoid divide-by-zero.",
+
         "manual_funnel_header": "Manual funnel inputs (Meta-like)",
-        "spend": "Spend ($)",
+        "spend_f": "Spend ($)",
         "convos": "Messaging conversations",
         "clicks": "Clicks (optional, for diagnostics)",
         "impr": "Impressions (optional, for diagnostics)",
-        "warn_convos": "Conversations must be > 0 to use funnel mode.",
+
         "scale_header": "Scaling assumptions",
         "scale_inc": "Simulate Spend Increase (%)",
         "scale_decay": "CAC deterioration per +100% spend (%)",
         "note": "“CAC deterioration per +100% spend” = how much CAC worsens when you double spend. Example: 25% → doubling spend increases CAC by ~25%.",
+
         "analyze": "Analyze",
+
+        "no_msg_rows": "No rows found where Result indicator contains 'messaging_conversation_started'.",
+        "conv_zero": "Conversations sum to 0. Can't proceed.",
+        "warn_orders": "Inferred orders < 1. Close rate might be too low or dataset too small. I’ll still run with Orders=1 to avoid divide-by-zero.",
+        "warn_convos": "Conversations must be > 0 to use funnel mode.",
+
         "status_hold": "🔴 HOLD — You are already losing money.",
         "status_fragile": "🟠 FRAGILE — Small efficiency loss makes you unprofitable.",
         "status_safe": "🟢 CONTROLLED — Unit economics can tolerate some scaling.",
+
         "bottleneck_neg": "Unit economics are negative even before ads (price/margin/refunds problem).",
         "bottleneck_cac": "High CAC is your primary scaling risk.",
         "bottleneck_ref": "Refund rate is shrinking your ad tolerance.",
         "bottleneck_margin": "Low gross margin limits safe scaling.",
         "bottleneck_ok": "No major structural constraint detected.",
+
         "baseline_hdr": "Baseline (derived)",
         "meta_diag": "Meta diagnostics (if provided)",
         "main_constraint": "Main Constraint",
         "sim_hdr": "Scaling Simulation (selected)",
         "safe_hdr": "Safe Scaling Ceiling",
-        "safe_text": "Maximum safe spend increase (profit ≥ 0)",
+        "safe_line": "Maximum safe spend increase (profit ≥ 0)",
         "low_ceiling": "Low ceiling: scaling aggressively will likely flip you negative unless margins/returns/CAC improve.",
         "table_hdr": "Scaling Scenario Table",
         "new_cac_na": "New CAC: n/a (baseline CAC is 0)",
-        "revenue": "Total Revenue ($)",
-        "cogs": "Total COGS ($)",
-        "adspend": "Ad Spend ($)",
-        "orders": "Orders",
-        "baseline_profit": "Baseline Profit",
-        "margin_buffer": "Margin Buffer",
     },
     "Русский": {
         "title": "Scaling Risk Checker",
@@ -76,66 +86,75 @@ TR = {
         "m_manual": "Финансы вручную",
         "m_csv": "Загрузка Meta CSV",
         "m_funnel": "Воронка вручную (как Meta)",
+
+        "rev": "Общая выручка ($)",
+        "cogs": "Себестоимость ($)",
+        "spend": "Расход на рекламу ($)",
+        "orders": "Заказы",
+        "refund": "Процент возвратов (%)",
+
         "upload_meta": "Загрузка Meta export",
-        "upload_csv": "Загрузите CSV",
-        "upload_hint": "Загрузите Meta CSV, чтобы автоматически заполнить Spend + Conversations. AOV/COGS и конверсию всё равно вводите вручную.",
+        "upload_csv": "Загрузить CSV",
+        "upload_hint": "Загрузите Meta CSV, чтобы автоматически заполнить Spend + Conversations. AOV/COGS и конверсию вводите вручную.",
         "preview": "Превью",
-        "derived": "### Получено из CSV",
-        "bridge": "Связка Meta → Финансы",
-        "campaign_col": "Колонка названия кампании",
+
+        "camp_col": "Колонка названия кампании",
         "spend_col": "Колонка Spend",
         "results_col": "Колонка Results",
         "indicator_col": "Колонка Result indicator",
         "select_campaigns": "Выберите кампании",
-        "no_msg_rows": "Не найдено строк, где Result indicator содержит 'messaging_conversation_started'.",
-        "conv_zero": "Сумма Conversations = 0. Невозможно продолжить.",
-        "cpa_msg": "CPA (сообщение/диалог)",
+
+        "derived": "### Получено из CSV",
+        "bridge": "Связка Meta → Финансы",
+
         "close_rate": "Конверсия в заказ (заказы / диалоги)",
         "aov": "Средний чек ($)",
         "cogs_po": "Себестоимость на заказ ($)",
-        "refund": "Процент возвратов (%)",
-        "warn_orders": "Расчётные заказы < 1. Конверсия может быть слишком низкой. Я всё равно запущу с Orders=1, чтобы не словить деление на ноль.",
+
         "manual_funnel_header": "Воронка вручную (как Meta)",
-        "spend": "Расход ($)",
+        "spend_f": "Расход ($)",
         "convos": "Диалоги (сообщения)",
         "clicks": "Клики (опционально, для диагностики)",
         "impr": "Показы (опционально, для диагностики)",
-        "warn_convos": "Диалоги должны быть > 0 для режима воронки.",
+
         "scale_header": "Параметры масштабирования",
         "scale_inc": "Увеличение бюджета (%)",
         "scale_decay": "Ухудшение CAC при +100% бюджета (%)",
-        "note": "“Ухудшение CAC при +100% бюджета” = насколько ухудшается CAC при удвоении бюджета. Пример: 25% → при x2 бюджета CAC становится хуже примерно на 25%.",
+        "note": "“Ухудшение CAC при +100% бюджета” = насколько ухудшается CAC при удвоении бюджета. Пример: 25% → при x2 бюджета CAC ухудшается примерно на 25%.",
+
         "analyze": "Рассчитать",
+
+        "no_msg_rows": "Не найдено строк, где Result indicator содержит 'messaging_conversation_started'.",
+        "conv_zero": "Сумма Conversations = 0. Невозможно продолжить.",
+        "warn_orders": "Расчётные заказы < 1. Я всё равно запущу с Orders=1, чтобы не словить деление на ноль.",
+        "warn_convos": "Диалоги должны быть > 0 для режима воронки.",
+
         "status_hold": "🔴 HOLD — вы уже в минусе.",
         "status_fragile": "🟠 FRAGILE — небольшое ухудшение эффективности делает вас убыточными.",
         "status_safe": "🟢 CONTROLLED — юнит-экономика выдерживает некоторый рост.",
+
         "bottleneck_neg": "Юнит-экономика отрицательная ещё до рекламы (цена/маржа/возвраты).",
         "bottleneck_cac": "Слишком высокий CAC — главный риск масштабирования.",
         "bottleneck_ref": "Возвраты съедают допуск по рекламе.",
         "bottleneck_margin": "Низкая маржа ограничивает безопасный рост.",
         "bottleneck_ok": "Серьёзных структурных ограничений не найдено.",
+
         "baseline_hdr": "База (расчётная)",
         "meta_diag": "Диагностика Meta (если есть)",
         "main_constraint": "Основное ограничение",
         "sim_hdr": "Симуляция масштабирования (выбранная)",
         "safe_hdr": "Предел безопасного масштабирования",
-        "safe_text": "Максимальное безопасное увеличение бюджета (прибыль ≥ 0)",
-        "low_ceiling": "Низкий предел: агрессивное масштабирование быстро утащит в минус, если не улучшать маржу/возвраты/CAC.",
+        "safe_line": "Максимальное безопасное увеличение бюджета (прибыль ≥ 0)",
+        "low_ceiling": "Низкий предел: агрессивный рост быстро утащит в минус, если не улучшать маржу/возвраты/CAC.",
         "table_hdr": "Таблица сценариев",
         "new_cac_na": "Новый CAC: n/a (базовый CAC = 0)",
-        "revenue": "Выручка ($)",
-        "cogs": "Себестоимость ($)",
-        "adspend": "Расход на рекламу ($)",
-        "orders": "Заказы",
-        "baseline_profit": "Базовая прибыль",
-        "margin_buffer": "Запас по марже",
     },
 }
-t = TR[LANG]
+t = T[lang]
 
-# -----------------------------
+# =========================
 # Style
-# -----------------------------
+# =========================
 st.markdown(
     """
 <style>
@@ -158,7 +177,6 @@ st.markdown(
 st.title(t["title"])
 st.write(t["subtitle"])
 
-
 # -----------------------------
 # Core model (finance-only scaling)
 # -----------------------------
@@ -180,7 +198,6 @@ def simulate_scale(
     cogs = float(cogs) if cogs is not None else 0.0
     ad_spend = float(ad_spend) if ad_spend is not None else 0.0
 
-    # Baseline unit economics
     AOV = revenue / orders if orders > 0 else 0.0
     cogs_per_order = cogs / orders if orders > 0 else 0.0
     cac = ad_spend / orders if orders > 0 else 0.0
@@ -188,11 +205,9 @@ def simulate_scale(
     baseline_refund_cost = revenue * rr
     baseline_profit = revenue - cogs - ad_spend - baseline_refund_cost
 
-    # max CAC per order you can pay while staying at profit >= 0
     break_even_cac = (AOV - cogs_per_order - (AOV * rr))
     margin_buffer = ((break_even_cac - cac) / break_even_cac) if break_even_cac > 0 else 0.0
 
-    # Scaling simulation
     new_spend = ad_spend * (1 + g)
 
     if cac <= 0:
@@ -222,11 +237,7 @@ def simulate_scale(
         "new_cogs": new_cogs,
         "new_refund_cost": new_refund_cost,
         "new_profit": new_profit,
-        "rr": rr,
-        "g": g,
-        "k": k,
     }
-
 
 def find_safe_max_scale_pct(
     revenue: float,
@@ -254,39 +265,30 @@ def find_safe_max_scale_pct(
             break
     return last_safe
 
-
 # -----------------------------
-# Input mode (IMPORTANT: stable IDs)
+# Input mode (STABLE IDs so RU doesn't break logic)
 # -----------------------------
-MODE_OPTIONS = {
+MODE = {
     "manual": t["m_manual"],
     "csv": t["m_csv"],
     "funnel": t["m_funnel"],
 }
-mode_label = st.radio(
-    t["mode"],
-    list(MODE_OPTIONS.values()),
-    horizontal=True,
-)
-# map back to stable id
-mode = [k for k, v in MODE_OPTIONS.items() if v == mode_label][0]
+mode_label = st.radio(t["mode"], list(MODE.values()), horizontal=True)
+mode = [k for k, v in MODE.items() if v == mode_label][0]
 
 st.divider()
 
-# These will be filled by the selected mode:
 revenue = 0.0
 cogs = 0.0
 ad_spend = 0.0
 orders = 1.0
 refund_rate = 0.0
-
-# Extra diagnostics for Meta modes
 diag = {}
 
 if mode == "manual":
-    revenue = st.number_input(t["revenue"], min_value=0.0, value=0.0)
+    revenue = st.number_input(t["rev"], min_value=0.0, value=0.0)
     cogs = st.number_input(t["cogs"], min_value=0.0, value=0.0)
-    ad_spend = st.number_input(t["adspend"], min_value=0.0, value=0.0)
+    ad_spend = st.number_input(t["spend"], min_value=0.0, value=0.0)
     orders = st.number_input(t["orders"], min_value=1, value=1)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0, value=0.0)
 
@@ -310,7 +312,7 @@ elif mode == "csv":
                 return cols.index(c)
         return 0
 
-    col_campaign = st.selectbox(t["campaign_col"], cols, index=guess_index(["Campaign name", "Campaign", "campaign_name"]))
+    col_campaign = st.selectbox(t["camp_col"], cols, index=guess_index(["Campaign name", "Campaign", "campaign_name"]))
     col_spend = st.selectbox(t["spend_col"], cols, index=guess_index(["Amount spent (MYR)", "Amount spent", "Spend"]))
     col_results = st.selectbox(t["results_col"], cols, index=guess_index(["Results", "Result", "results"]))
     col_indicator = st.selectbox(t["indicator_col"], cols, index=guess_index(["Result indicator", "Action type", "Result type", "result_indicator"]))
@@ -341,12 +343,12 @@ elif mode == "csv":
         st.stop()
 
     cpa_msg = meta_spend / meta_convos
-    st.write(f"{t['cpa_msg']}: **{cpa_msg:.2f}**")
+    st.write(f"CPA (message conversation): **{cpa_msg:.2f}**")
 
     st.divider()
     st.subheader(t["bridge"])
 
-    close_rate = st.number_input(t["close_rate"], min_value=0.0, max_value=1.0, value=0.20, help="If 20% of chats become orders, use 0.20")
+    close_rate = st.number_input(t["close_rate"], min_value=0.0, max_value=1.0, value=0.20)
     AOV = st.number_input(t["aov"], min_value=0.0, value=0.0)
     cogs_per_order = st.number_input(t["cogs_po"], min_value=0.0, value=0.0)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0, value=0.0)
@@ -362,15 +364,14 @@ elif mode == "csv":
     cogs = cogs_per_order * orders
 
     diag = {
-        "meta_convos": meta_convos,
         "cpa_msg": cpa_msg,
         "close_rate": close_rate,
         "implied_cac": (cpa_msg / close_rate) if close_rate > 0 else None,
     }
 
-else:  # funnel
+else:
     st.subheader(t["manual_funnel_header"])
-    spend = st.number_input(t["spend"], min_value=0.0, value=0.0)
+    spend = st.number_input(t["spend_f"], min_value=0.0, value=0.0)
     conversations = st.number_input(t["convos"], min_value=0.0, value=0.0)
     clicks = st.number_input(t["clicks"], min_value=0.0, value=0.0)
     impressions = st.number_input(t["impr"], min_value=0.0, value=0.0)
@@ -419,7 +420,7 @@ cac_deterioration_per_100 = st.slider(t["scale_decay"], 0, 100, 25)
 st.markdown(f'<div class="small-note">{t["note"]}</div>', unsafe_allow_html=True)
 
 # -----------------------------
-# Analyze
+# Analyze (THIS is where your table appears)
 # -----------------------------
 if st.button(t["analyze"]):
     res = simulate_scale(
@@ -477,14 +478,14 @@ if st.button(t["analyze"]):
     st.write(f"COGS per order: **${cogs_per_order:.2f}**")
     st.write(f"CAC: **${cac:.2f}**")
     st.write(f"Break-even CAC: **${break_even_cac:.2f}**")
-    st.write(f"{t['baseline_profit']}: **${res['baseline_profit']:.2f}**")
-    st.write(f"{t['margin_buffer']}: **{res['margin_buffer']*100:.1f}%**")
+    st.write(f"Baseline Profit: **${res['baseline_profit']:.2f}**")
+    st.write(f"Margin Buffer: **{res['margin_buffer']*100:.1f}%**")
     st.markdown(f'<div class="big-status {status_class}">{status}</div>', unsafe_allow_html=True)
 
     if diag:
         st.subheader(t["meta_diag"])
         if diag.get("cpa_msg") is not None:
-            st.write(f"{t['cpa_msg']}: **{diag['cpa_msg']:.2f}**")
+            st.write(f"CPA (message conversation): **{diag['cpa_msg']:.2f}**")
         if diag.get("close_rate") is not None:
             st.write(f"Close rate: **{diag['close_rate']:.2%}**")
         if diag.get("implied_cac") is not None:
@@ -507,7 +508,7 @@ if st.button(t["analyze"]):
     st.write(f"Forecast Profit: **${res['new_profit']:.2f}**")
 
     st.subheader(t["safe_hdr"])
-    st.write(f"{t['safe_text']}: **{safe_scale_pct}%**")
+    st.write(f"{t['safe_line']}: **{safe_scale_pct}%**")
     if safe_scale_pct < 50:
         st.warning(t["low_ceiling"])
 
