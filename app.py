@@ -23,6 +23,7 @@ st.markdown(
 )
 
 st.title("Scaling Risk Checker")
+st.caption("VERSION: CSV + 3 MODES (fix-no-horizontal)")
 st.write("Upload Meta export or input manually. Then simulate spend scaling with efficiency deterioration.")
 
 
@@ -128,7 +129,6 @@ def find_safe_max_scale_pct(
 mode = st.radio(
     "Choose input mode",
     ["Manual finance", "Meta CSV upload", "Manual funnel (Meta-like)"],
-    horizontal=True,
 )
 
 st.divider()
