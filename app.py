@@ -162,6 +162,8 @@ if mode == t["manual_finance"]:
     orders = st.number_input(t["orders"], min_value=1)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
 
+-------------------------------
+# Upload CSV
 elif mode == t["meta_csv"]:
     uploaded = st.file_uploader("Upload CSV", type=["csv"])
 
@@ -179,20 +181,15 @@ elif mode == t["meta_csv"]:
     col_results = st.selectbox("Results column", cols)
     col_indicator = st.selectbox("Result indicator column", cols)
 
-    msg_mask = df[col_indicator].astype(str).str.contains(
-        "messaging",
-        case=False,
-        na=False
-    )
+    meta_spend = pd.to_numeric(df[col_spend], errors="coerce").fillna(0).sum()
+    meta_convos = pd.to_numeric(df[col_results], errors="coerce").fillna(0).sum()
 
-    df_msg = df[msg_mask]
+    st.write(f"Spend: {meta_spend}")
+    st.write(f"Results: {meta_convos}")
 
-    if df_msg.empty:
-        st.error("No messaging_conversation_started rows found.")
+    if meta_convos <= 0:
+        st.error("Results column sums to 0.")
         st.stop()
-
-    meta_spend = pd.to_numeric(df_msg[col_spend], errors="coerce").fillna(0).sum()
-    meta_convos = pd.to_numeric(df_msg[col_results], errors="coerce").fillna(0).sum()
 
     st.write(f"Spend: {meta_spend}")
     st.write(f"Conversations: {meta_convos}")
