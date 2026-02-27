@@ -162,6 +162,55 @@ if mode == t["manual_finance"]:
     orders = st.number_input(t["orders"], min_value=1)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
 
+elif mode == t["meta_csv"]:
+    uploaded = st.file_uploader("Upload CSV", type=["csv"])
+
+    if not uploaded:
+        st.info("Upload your Meta export CSV.")
+        st.stop()
+
+    df = pd.read_csv(uploaded)
+    st.write("Preview:")
+    st.dataframe(df.head(), use_container_width=True)
+
+    cols = df.columns.tolist()
+
+    col_spend = st.selectbox("Spend column", cols)
+    col_results = st.selectbox("Results column", cols)
+    col_indicator = st.selectbox("Result indicator column", cols)
+
+    msg_mask = df[col_indicator].astype(str).str.contains(
+        "messaging_conversation_started",
+        case=False,
+        na=False
+    )
+
+    df_msg = df[msg_mask]
+
+    if df_msg.empty:
+        st.error("No messaging_conversation_started rows found.")
+        st.stop()
+
+    meta_spend = pd.to_numeric(df_msg[col_spend], errors="coerce").fillna(0).sum()
+    meta_convos = pd.to_numeric(df_msg[col_results], errors="coerce").fillna(0).sum()
+
+    st.write(f"Spend: {meta_spend}")
+    st.write(f"Conversations: {meta_convos}")
+
+    if meta_convos <= 0:
+        st.error("Conversations = 0.")
+        st.stop()
+
+    close_rate = st.number_input(t["close_rate"], min_value=0.0, max_value=1.0, value=0.2)
+    AOV = st.number_input(t["aov"], min_value=0.0)
+    cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
+    refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
+
+    orders = max(meta_convos * close_rate, 1)
+    revenue = AOV * orders
+    cogs = cogs_per_order * orders
+    ad_spend = meta_spend
+
 # -----------------------------
 # Manual funnel
 # -----------------------------
