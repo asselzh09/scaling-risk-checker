@@ -180,7 +180,7 @@ elif mode == t["meta_csv"]:
     col_indicator = st.selectbox("Result indicator column", cols)
 
     msg_mask = df[col_indicator].astype(str).str.contains(
-        "messaging_conversation_started",
+        "messaging",
         case=False,
         na=False
     )
