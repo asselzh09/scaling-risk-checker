@@ -1,30 +1,29 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 st.set_page_config(page_title="Scaling Risk Checker", layout="centered")
 
-# -----------------------------
-# Language selector
-# -----------------------------
+# =========================
+# Language
+# =========================
 lang = st.selectbox("Language / Язык", ["English", "Русский"])
 
 TEXT = {
     "English": {
         "title": "Scaling Risk Checker",
-        "subtitle": "Upload Meta export or input manually. Then simulate scaling.",
+        "subtitle": "Upload Meta CSV or input manually. Then simulate scaling.",
         "mode": "Choose input mode",
         "manual_finance": "Manual finance",
-        "meta_csv": "Meta CSV upload",
         "manual_funnel": "Manual funnel (Meta-like)",
+        "csv": "Meta CSV upload",
         "revenue": "Total Revenue ($)",
         "cogs": "Total COGS ($)",
         "ad_spend": "Ad Spend ($)",
         "orders": "Orders",
         "refund": "Refund Rate (%)",
         "spend": "Spend ($)",
-        "conversations": "Messaging conversations",
-        "clicks": "Clicks (optional)",
-        "impressions": "Impressions (optional)",
+        "results": "Results (conversations)",
         "close_rate": "Close rate (orders / conversations)",
         "aov": "Average Order Value ($)",
         "cogs_per_order": "COGS per order ($)",
@@ -33,30 +32,26 @@ TEXT = {
         "cac_decay": "CAC deterioration per +100% spend (%)",
         "analyze": "Analyze",
         "baseline": "Baseline",
+        "simulation": "Simulation",
         "profit": "Profit",
-        "constraint": "Main Constraint",
-        "simulation": "Scaling Simulation",
-        "safe_ceiling": "Safe Scaling Ceiling",
-        "max_safe": "Maximum safe spend increase (profit ≥ 0)",
-        "scenario": "Scaling Scenario Table"
+        "safe": "Maximum safe scaling (profit ≥ 0)",
+        "scenario": "Scenario table"
     },
     "Русский": {
         "title": "Проверка Риска Масштабирования",
-        "subtitle": "Загрузите Meta CSV или введите данные вручную. Затем смоделируйте масштабирование.",
+        "subtitle": "Загрузите CSV из Meta или введите данные вручную.",
         "mode": "Выберите режим ввода",
         "manual_finance": "Финансы вручную",
-        "meta_csv": "Загрузка Meta CSV",
         "manual_funnel": "Воронка вручную (как Meta)",
+        "csv": "Загрузка Meta CSV",
         "revenue": "Общая выручка ($)",
         "cogs": "Себестоимость ($)",
         "ad_spend": "Рекламные расходы ($)",
         "orders": "Количество заказов",
         "refund": "Процент возвратов (%)",
         "spend": "Расход ($)",
-        "conversations": "Диалоги (сообщения)",
-        "clicks": "Клики (опционально)",
-        "impressions": "Показы (опционально)",
-        "close_rate": "Конверсия в заказ (заказы / диалоги)",
+        "results": "Результаты (диалоги)",
+        "close_rate": "Конверсия в заказ",
         "aov": "Средний чек ($)",
         "cogs_per_order": "Себестоимость на заказ ($)",
         "scaling": "Параметры масштабирования",
@@ -64,12 +59,10 @@ TEXT = {
         "cac_decay": "Ухудшение CAC при +100% бюджета (%)",
         "analyze": "Рассчитать",
         "baseline": "Базовые показатели",
+        "simulation": "Симуляция",
         "profit": "Прибыль",
-        "constraint": "Основное ограничение",
-        "simulation": "Симуляция масштабирования",
-        "safe_ceiling": "Предел безопасного масштабирования",
-        "max_safe": "Максимальное безопасное увеличение бюджета (прибыль ≥ 0)",
-        "scenario": "Таблица сценариев масштабирования"
+        "safe": "Максимальное безопасное масштабирование (прибыль ≥ 0)",
+        "scenario": "Таблица сценариев"
     }
 }
 
@@ -78,26 +71,27 @@ t = TEXT[lang]
 st.title(t["title"])
 st.write(t["subtitle"])
 
-# -----------------------------
-# Core scaling model
-# -----------------------------
-def simulate_scale(revenue, cogs, ad_spend, orders, refund_rate_pct,
-                   spend_increase_pct, cac_deterioration_per_100_pct):
+# =========================
+# Scaling Engine
+# =========================
+def simulate(revenue, cogs, ad_spend, orders, refund_rate,
+             spend_growth_pct, cac_decay_pct):
 
-    rr = refund_rate_pct / 100
-    g = spend_increase_pct / 100
-    k = cac_deterioration_per_100_pct / 100
+    if orders <= 0:
+        return None
 
-    AOV = revenue / orders if orders > 0 else 0
-    cogs_per_order = cogs / orders if orders > 0 else 0
-    cac = ad_spend / orders if orders > 0 else 0
+    rr = refund_rate / 100
+    g = spend_growth_pct / 100
+    k = cac_decay_pct / 100
+
+    AOV = revenue / orders
+    cogs_per_order = cogs / orders
+    cac = ad_spend / orders
 
     baseline_profit = revenue - cogs - ad_spend - revenue * rr
-    break_even_cac = AOV - cogs_per_order - AOV * rr
-    margin_buffer = ((break_even_cac - cac) / break_even_cac) if break_even_cac > 0 else 0
 
     new_spend = ad_spend * (1 + g)
-    new_cac = cac * (1 + k * g) if cac > 0 else 0
+    new_cac = cac * (1 + k * g)
     new_orders = new_spend / new_cac if new_cac > 0 else orders
 
     new_revenue = AOV * new_orders
@@ -105,43 +99,31 @@ def simulate_scale(revenue, cogs, ad_spend, orders, refund_rate_pct,
     new_profit = new_revenue - new_cogs - new_spend - new_revenue * rr
 
     return {
-        "AOV": AOV,
-        "cogs_per_order": cogs_per_order,
-        "cac": cac,
-        "break_even_cac": break_even_cac,
-        "margin_buffer": margin_buffer,
         "baseline_profit": baseline_profit,
-        "new_spend": new_spend,
-        "new_cac": new_cac,
-        "new_orders": new_orders,
-        "new_revenue": new_revenue,
-        "new_profit": new_profit
+        "new_profit": new_profit,
+        "cac": cac,
+        "new_cac": new_cac
     }
 
 
-def find_safe_max_scale_pct(revenue, cogs, ad_spend, orders,
-                            refund_rate_pct, cac_deterioration_per_100_pct):
-
+def safe_ceiling(revenue, cogs, ad_spend, orders, refund_rate, cac_decay_pct):
     last_safe = 0
     for pct in range(0, 301):
-        r = simulate_scale(
-            revenue, cogs, ad_spend, orders,
-            refund_rate_pct, pct,
-            cac_deterioration_per_100_pct
-        )
-        if r["new_profit"] >= 0:
+        r = simulate(revenue, cogs, ad_spend, orders,
+                     refund_rate, pct, cac_decay_pct)
+        if r and r["new_profit"] >= 0:
             last_safe = pct
         else:
             break
     return last_safe
 
 
-# -----------------------------
-# Mode selector
-# -----------------------------
+# =========================
+# Mode
+# =========================
 mode = st.radio(
     t["mode"],
-    [t["manual_finance"], t["meta_csv"], t["manual_funnel"]]
+    [t["manual_finance"], t["manual_funnel"], t["csv"]]
 )
 
 st.divider()
@@ -152,9 +134,9 @@ ad_spend = 0
 orders = 1
 refund_rate = 0
 
-# -----------------------------
-# Manual finance
-# -----------------------------
+# =========================
+# Manual Finance
+# =========================
 if mode == t["manual_finance"]:
     revenue = st.number_input(t["revenue"], min_value=0.0)
     cogs = st.number_input(t["cogs"], min_value=0.0)
@@ -162,111 +144,94 @@ if mode == t["manual_finance"]:
     orders = st.number_input(t["orders"], min_value=1)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
 
-# -------------------------------
-# Upload CSV
-elif mode == t["meta_csv"]:
-    uploaded = st.file_uploader("Upload CSV", type=["csv"])
-
-    if not uploaded:
-        st.info("Upload your Meta export CSV.")
-        st.stop()
-
-    df = pd.read_csv(uploaded)
-    st.write("Preview:")
-    st.dataframe(df.head(), use_container_width=True)
-
-    cols = df.columns.tolist()
-
-    col_spend = st.selectbox("Spend column", cols)
-    col_results = st.selectbox("Results column", cols)
-    col_indicator = st.selectbox("Result indicator column", cols)
-
-    meta_spend = pd.to_numeric(df[col_spend], errors="coerce").fillna(0).sum()
-    meta_convos = pd.to_numeric(df[col_results], errors="coerce").fillna(0).sum()
-
-    st.write(f"Spend: {meta_spend}")
-    st.write(f"Results: {meta_convos}")
-
-    if meta_convos <= 0:
-        st.error("Results column sums to 0.")
-        st.stop()
-
-    st.write(f"Spend: {meta_spend}")
-    st.write(f"Conversations: {meta_convos}")
-
-    if meta_convos <= 0:
-        st.error("Conversations = 0.")
-        st.stop()
-
-    close_rate = st.number_input(t["close_rate"], min_value=0.0, max_value=1.0, value=0.2)
-    AOV = st.number_input(t["aov"], min_value=0.0)
-    cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
-    refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
-
-    orders = max(meta_convos * close_rate, 1)
-    revenue = AOV * orders
-    cogs = cogs_per_order * orders
-    ad_spend = meta_spend
-
-# -----------------------------
-# Manual funnel
-# -----------------------------
+# =========================
+# Manual Funnel
+# =========================
 elif mode == t["manual_funnel"]:
     spend = st.number_input(t["spend"], min_value=0.0)
-    conversations = st.number_input(t["conversations"], min_value=0.0)
-    close_rate = st.number_input(t["close_rate"], min_value=0.0, max_value=1.0, value=0.2)
+    results = st.number_input(t["results"], min_value=0.0)
+    close_rate = st.number_input(t["close_rate"], 0.0, 1.0, 0.2)
     AOV = st.number_input(t["aov"], min_value=0.0)
     cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
     refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
 
-    orders = max(conversations * close_rate, 1)
+    orders = max(results * close_rate, 1)
     revenue = AOV * orders
     cogs = cogs_per_order * orders
     ad_spend = spend
 
-# -----------------------------
-# Scaling inputs
-# -----------------------------
-st.subheader(t["scaling"])
-spend_increase_pct = st.slider(t["spend_increase"], 0, 300, 50)
-cac_deterioration_per_100 = st.slider(t["cac_decay"], 0, 100, 25)
+# =========================
+# CSV Upload
+# =========================
+elif mode == t["csv"]:
+    uploaded = st.file_uploader("Upload CSV", type=["csv"])
 
-# -----------------------------
+    if uploaded:
+        df = pd.read_csv(uploaded)
+
+        st.write("Preview:")
+        st.dataframe(df.head())
+
+        columns = df.columns.tolist()
+
+        spend_col = st.selectbox("Spend column", columns)
+        results_col = st.selectbox("Results column", columns)
+
+        meta_spend = pd.to_numeric(df[spend_col], errors="coerce").fillna(0).sum()
+        meta_results = pd.to_numeric(df[results_col], errors="coerce").fillna(0).sum()
+
+        st.write(f"Total Spend: {meta_spend}")
+        st.write(f"Total Results: {meta_results}")
+
+        if meta_results > 0:
+            close_rate = st.number_input(t["close_rate"], 0.0, 1.0, 0.2)
+            AOV = st.number_input(t["aov"], min_value=0.0)
+            cogs_per_order = st.number_input(t["cogs_per_order"], min_value=0.0)
+            refund_rate = st.number_input(t["refund"], min_value=0.0, max_value=100.0)
+
+            orders = max(meta_results * close_rate, 1)
+            revenue = AOV * orders
+            cogs = cogs_per_order * orders
+            ad_spend = meta_spend
+        else:
+            st.warning("Results column sums to 0.")
+
+# =========================
+# Scaling Inputs
+# =========================
+st.subheader(t["scaling"])
+spend_growth = st.slider(t["spend_increase"], 0, 300, 50)
+cac_decay = st.slider(t["cac_decay"], 0, 100, 25)
+
+# =========================
 # Analyze
-# -----------------------------
+# =========================
 if st.button(t["analyze"]):
 
-    result = simulate_scale(
-        revenue, cogs, ad_spend, orders,
-        refund_rate, spend_increase_pct,
-        cac_deterioration_per_100
-    )
+    result = simulate(revenue, cogs, ad_spend, orders,
+                      refund_rate, spend_growth, cac_decay)
 
-    safe_pct = find_safe_max_scale_pct(
-        revenue, cogs, ad_spend, orders,
-        refund_rate, cac_deterioration_per_100
-    )
+    if result:
 
-    st.subheader(t["baseline"])
-    st.write(f"CAC: {result['cac']:.2f}")
-    st.write(f"{t['profit']}: {result['baseline_profit']:.2f}")
+        st.subheader(t["baseline"])
+        st.write(f"{t['profit']}: {round(result['baseline_profit'], 2)}")
 
-    st.subheader(t["simulation"])
-    st.write(f"{t['profit']}: {result['new_profit']:.2f}")
+        st.subheader(t["simulation"])
+        st.write(f"{t['profit']}: {round(result['new_profit'], 2)}")
 
-    st.subheader(t["safe_ceiling"])
-    st.write(f"{t['max_safe']}: {safe_pct}%")
+        safe = safe_ceiling(revenue, cogs, ad_spend,
+                            orders, refund_rate, cac_decay)
 
-    st.subheader(t["scenario"])
-    rows = []
-    for pct in [0, 25, 50, 75, 100, 150, 200]:
-        r = simulate_scale(
-            revenue, cogs, ad_spend, orders,
-            refund_rate, pct,
-            cac_deterioration_per_100
-        )
-        rows.append({
-            "Scale %": pct,
-            "Profit": round(r["new_profit"], 2)
-        })
-    st.dataframe(pd.DataFrame(rows))
+        st.subheader(t["safe"])
+        st.write(f"{safe}%")
+
+        st.subheader(t["scenario"])
+        rows = []
+        for pct in [0, 25, 50, 75, 100, 150, 200]:
+            r = simulate(revenue, cogs, ad_spend,
+                         orders, refund_rate, pct, cac_decay)
+            rows.append({
+                "Scale %": pct,
+                "Profit": round(r["new_profit"], 2)
+            })
+        st.dataframe(pd.DataFrame(rows))
