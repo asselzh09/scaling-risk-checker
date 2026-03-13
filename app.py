@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Ad Budget Planner", layout="centered")
@@ -13,7 +12,7 @@ lang = st.selectbox("Language / Язык", ["English", "Русский"])
 T = {
     "English": {
         "title": "Ad Budget Planner",
-        "subtitle": "See how far you can scale ads before profit starts breaking.",
+        "subtitle": "See whether your current ad spend is healthy, too high, or safe to scale.",
 
         "biz_stage": "Choose your situation",
         "new_business": "New business",
@@ -54,14 +53,14 @@ T = {
         "clicks": "Clicks (optional)",
         "impr": "Impressions (optional)",
 
-        "scale_header": "Scaling scenario",
-        "preset_label": "How does your ad efficiency usually behave when you scale?",
+        "scale_header": "Scenario settings",
+        "preset_label": "How does ad efficiency usually behave when you scale?",
         "preset_opt": "Optimistic",
         "preset_real": "Realistic",
         "preset_bad": "Pessimistic",
-        "scale_inc": "How much do you want to increase ad budget?",
-        "scale_decay": "How much can customer acquisition cost rise if you double spend?",
-        "note": "Example: if CAC is now $20 and this is 25%, then after doubling spend the model assumes CAC may rise to about $25.",
+        "scale_inc": "Planned ad spend change (%)",
+        "scale_decay": "If you double ad spend, how much can CAC increase (%)?",
+        "note": "Example: if current CAC is $20 and this setting is 25%, then after doubling spend the model assumes CAC may rise to about $25.",
 
         "analyze": "Analyze",
 
@@ -70,7 +69,7 @@ T = {
         "warn_orders": "Estimated orders are below 1. The app will use Orders = 1 to avoid division by zero.",
         "warn_convos": "Conversations must be greater than 0 to use this mode.",
 
-        "status_hold": "🔴 HOLD — Scaling now will likely result in a net loss.",
+        "status_hold": "🔴 HOLD — Current economics are weak or scaling leads to loss.",
         "status_fragile": "🟠 FRAGILE — Small CAC deterioration can break profitability.",
         "status_safe": "🟢 CONTROLLED — Unit economics can handle some growth.",
 
@@ -85,24 +84,26 @@ T = {
         "unit_hdr": "Unit economics",
         "safe_cac_hdr": "Safe CAC",
         "max_budget_hdr": "Maximum safe ad budget",
+        "real_analysis_hdr": "Real business analysis",
+        "ads_effect_hdr": "Are ads helping or hurting?",
+        "next_move_hdr": "Best next move",
         "main_constraint": "Main constraint",
         "rec_hdr": "Recommendation",
         "main_insight_hdr": "Main insight",
-        "sim_hdr": "Selected scaling scenario",
+        "sim_hdr": "Selected scenario result",
         "safe_hdr": "Safe scaling limit",
-        "safe_line": "Maximum safe ad budget increase (profit ≥ 0)",
+        "safe_line": "Maximum safe ad spend increase before profit turns negative",
         "low_ceiling": "Low ceiling: aggressive scaling may quickly become unprofitable unless you improve margin, refunds, or CAC.",
         "table_hdr": "Scenario table",
-        "new_cac_na": "New CAC: n/a (baseline CAC is 0)",
 
         "chart_hdr": "Profit sensitivity curve",
-        "chart_note": "This shows where higher ad spend stops increasing total profit.",
+        "chart_note": "This shows where reducing or increasing ad spend improves profit and where it starts hurting profit.",
         "current_point": "Current point",
         "peak_point": "Peak profit point",
-        "breakeven_point": "Break-even point",
+        "breakeven_point": "Loss point",
         "peak_profit": "Peak profit",
         "peak_spend": "Best ad spend",
-        "profit_cliff": "Profit cliff detected: after the peak, more spend reduces total profit.",
+        "profit_cliff": "Profit cliff detected: beyond the peak, more spend reduces total profit.",
 
         "safe_cac": "Safe CAC",
         "current_cac": "Current CAC",
@@ -110,6 +111,10 @@ T = {
 
         "current_ad_spend": "Current ad spend",
         "max_safe_spend": "Maximum safe spend",
+        "loss_point_spend": "Spend where profit turns negative",
+        "profit_before_ads": "Profit before ads",
+        "profit_after_ads": "Profit after ads",
+        "ad_impact": "Ad cost impact",
 
         "forecast_spend": "Forecast spend",
         "forecast_cac": "Forecast CAC",
@@ -117,7 +122,7 @@ T = {
         "forecast_revenue": "Forecast revenue",
         "forecast_profit": "Forecast profit",
 
-        "spend_increase_col": "Spend increase %",
+        "spend_increase_col": "Spend change %",
         "status_col": "Status",
 
         "newbiz_header": "New business planning",
@@ -129,7 +134,7 @@ T = {
         "expected_profit": "Expected profit",
         "rec_budget": "Suggested test budget",
         "newbiz_result": "New business estimate",
-        "newbiz_note": "Use this mode if you are planning your first ad budget and don't have real campaign data yet.",
+        "newbiz_note": "Use this mode if you are planning your first ad budget and do not have real campaign data yet.",
 
         "example_btn": "Load example data",
 
@@ -140,22 +145,37 @@ T = {
         "reco_good": "Healthy margin buffer. You still have room before CAC reaches break-even.",
         "reco_mid": "Economics look workable, but monitor CAC deterioration closely as you scale.",
 
-        "insight_drop_pct": "If you increase ad budget by {pct}%, profit may drop by {value}.",
-        "insight_grow_pct": "If you increase ad budget by {pct}%, profit may grow by {value}.",
-        "insight_safe_limit": "Your business can safely scale ads by up to {pct}% before profit turns negative.",
-        "insight_cac_ratio": "Your current CAC is already {pct}% of break-even CAC.",
+        "insight_drop_pct": "If ad spend changes by {pct}%, profit may fall by {value}.",
+        "insight_grow_pct": "If ad spend changes by {pct}%, profit may improve by {value}.",
+        "insight_safe_limit": "Your business can safely increase ad spend by up to {pct}% before profit turns negative.",
+        "insight_cac_ratio": "Your current CAC is already {pct}% of safe CAC.",
 
         "meta_diag": "Ad diagnostics (optional)",
         "cost_per_convo": "Cost per conversation",
         "conv_to_order": "Conversation to order rate",
-        "estimated_cac": "Estimated customer acquisition cost",
+        "estimated_cac": "Estimated CAC",
         "ctr": "CTR",
         "cpc": "CPC",
         "click_to_convo": "Click to conversation rate",
+
+        "ads_destroying": "Ads are currently destroying profitability.",
+        "ads_ok": "Ads are still profitable at the current spend level.",
+        "ads_weak": "Ads are still profitable, but efficiency is getting weak.",
+        "ads_not_problem": "The core business economics are the main issue, not ad scaling.",
+        "reduce_spend": "Reduce ad spend",
+        "hold_spend": "Hold current spend",
+        "scale_gradually": "Scale gradually",
+        "fix_conversion": "Improve conversion before scaling",
+        "fix_refunds": "Fix refund problem first",
+        "fix_margin": "Improve margin first",
+        "overspending_now": "Current spend appears above the profit peak.",
+        "reducing_can_help": "Reducing ad spend may improve profit.",
+        "current_close_to_peak": "Current spend is already close to the most profitable zone.",
+        "still_room_to_scale": "There is still room to scale before profit peaks.",
     },
     "Русский": {
         "title": "Ad Budget Planner",
-        "subtitle": "Показывает, как далеко можно масштабировать рекламу до того, как прибыль начнёт ломаться.",
+        "subtitle": "Показывает, здоровый ли у вас текущий рекламный бюджет, не слишком ли он высокий и безопасно ли масштабироваться.",
 
         "biz_stage": "Выберите вашу ситуацию",
         "new_business": "Новый бизнес",
@@ -196,14 +216,14 @@ T = {
         "clicks": "Клики (опционально)",
         "impr": "Показы (опционально)",
 
-        "scale_header": "Сценарий масштабирования",
+        "scale_header": "Настройки сценария",
         "preset_label": "Как обычно ведёт себя реклама, когда вы увеличиваете бюджет?",
         "preset_opt": "Оптимистичный",
         "preset_real": "Реалистичный",
         "preset_bad": "Пессимистичный",
-        "scale_inc": "Насколько вы хотите увеличить рекламный бюджет?",
-        "scale_decay": "Насколько может вырасти стоимость клиента, если вы удвоите бюджет?",
-        "note": "Пример: если сейчас CAC = $20 и здесь стоит 25%, то при удвоении бюджета модель предполагает, что CAC может вырасти примерно до $25.",
+        "scale_inc": "Планируемое изменение рекламного бюджета (%)",
+        "scale_decay": "Если вы удвоите рекламный бюджет, на сколько может вырасти CAC (%)?",
+        "note": "Пример: если текущий CAC = $20 и здесь стоит 25%, то при удвоении бюджета модель предполагает, что CAC может вырасти примерно до $25.",
 
         "analyze": "Рассчитать",
 
@@ -212,9 +232,9 @@ T = {
         "warn_orders": "Расчётные заказы меньше 1. Приложение использует Orders = 1, чтобы избежать деления на ноль.",
         "warn_convos": "Диалоги должны быть больше 0 для этого режима.",
 
-        "status_hold": "🔴 HOLD — масштабирование с высокой вероятностью приведёт к убытку.",
-        "status_fragile": "🟠 FRAGILE — даже небольшое ухудшение CAC может сломать прибыльность.",
-        "status_safe": "🟢 CONTROLLED — юнит-экономика выдерживает некоторый рост.",
+        "status_hold": "🔴 HOLD — Текущая экономика слабая или масштабирование ведёт к убытку.",
+        "status_fragile": "🟠 FRAGILE — Даже небольшое ухудшение CAC может сломать прибыльность.",
+        "status_safe": "🟢 CONTROLLED — Юнит-экономика выдерживает некоторый рост.",
 
         "bottleneck_neg": "Юнит-экономика отрицательная ещё до рекламы.",
         "bottleneck_cac": "Стоимость привлечения клиента — главный риск роста.",
@@ -227,21 +247,23 @@ T = {
         "unit_hdr": "Юнит-экономика",
         "safe_cac_hdr": "Безопасный CAC",
         "max_budget_hdr": "Максимально безопасный рекламный бюджет",
+        "real_analysis_hdr": "Реальный анализ бизнеса",
+        "ads_effect_hdr": "Реклама помогает или вредит?",
+        "next_move_hdr": "Лучшее следующее действие",
         "main_constraint": "Главное ограничение",
         "rec_hdr": "Рекомендация",
         "main_insight_hdr": "Главный вывод",
-        "sim_hdr": "Выбранный сценарий масштабирования",
+        "sim_hdr": "Результат выбранного сценария",
         "safe_hdr": "Предел безопасного роста",
-        "safe_line": "Максимальное безопасное увеличение рекламного бюджета (прибыль ≥ 0)",
+        "safe_line": "Максимальное безопасное увеличение рекламного бюджета до ухода прибыли в минус",
         "low_ceiling": "Низкий предел: агрессивный рост может быстро увести вас в минус, если не улучшить маржу, возвраты или CAC.",
         "table_hdr": "Таблица сценариев",
-        "new_cac_na": "Новый CAC: n/a (базовый CAC = 0)",
 
         "chart_hdr": "Кривая чувствительности прибыли",
-        "chart_note": "Показывает, в какой точке рост рекламного бюджета перестаёт увеличивать общую прибыль.",
+        "chart_note": "Показывает, в какой точке уменьшение или увеличение рекламного бюджета улучшает прибыль, а где начинает ей вредить.",
         "current_point": "Текущая точка",
         "peak_point": "Точка максимальной прибыли",
-        "breakeven_point": "Точка безубыточности",
+        "breakeven_point": "Точка ухода в минус",
         "peak_profit": "Максимальная прибыль",
         "peak_spend": "Лучший рекламный бюджет",
         "profit_cliff": "Обнаружен обрыв прибыли: после пика дальнейший рост бюджета снижает общую прибыль.",
@@ -252,6 +274,10 @@ T = {
 
         "current_ad_spend": "Текущий рекламный бюджет",
         "max_safe_spend": "Максимально безопасный бюджет",
+        "loss_point_spend": "Бюджет, где прибыль уходит в минус",
+        "profit_before_ads": "Прибыль до рекламы",
+        "profit_after_ads": "Прибыль после рекламы",
+        "ad_impact": "Влияние затрат на рекламу",
 
         "forecast_spend": "Прогноз расходов",
         "forecast_cac": "Прогноз CAC",
@@ -259,7 +285,7 @@ T = {
         "forecast_revenue": "Прогноз выручки",
         "forecast_profit": "Прогноз прибыли",
 
-        "spend_increase_col": "Рост бюджета %",
+        "spend_increase_col": "Изменение бюджета %",
         "status_col": "Статус",
 
         "newbiz_header": "Планирование для нового бизнеса",
@@ -282,9 +308,9 @@ T = {
         "reco_good": "Хороший запас маржи. У вас ещё есть пространство до точки безубыточности по CAC.",
         "reco_mid": "Юнит-экономика выглядит рабочей, но внимательно следите за ухудшением CAC при масштабировании.",
 
-        "insight_drop_pct": "Если увеличить рекламный бюджет на {pct}%, прибыль может снизиться на {value}.",
-        "insight_grow_pct": "Если увеличить рекламный бюджет на {pct}%, прибыль может вырасти на {value}.",
-        "insight_safe_limit": "Ваш бизнес может безопасно увеличить рекламу максимум на {pct}%, прежде чем прибыль станет отрицательной.",
+        "insight_drop_pct": "Если изменить рекламный бюджет на {pct}%, прибыль может снизиться на {value}.",
+        "insight_grow_pct": "Если изменить рекламный бюджет на {pct}%, прибыль может вырасти на {value}.",
+        "insight_safe_limit": "Ваш бизнес может безопасно увеличить рекламный бюджет максимум на {pct}%, прежде чем прибыль станет отрицательной.",
         "insight_cac_ratio": "Ваш текущий CAC уже составляет {pct}% от безопасного CAC.",
 
         "meta_diag": "Диагностика рекламы (опционально)",
@@ -294,6 +320,21 @@ T = {
         "ctr": "CTR",
         "cpc": "CPC",
         "click_to_convo": "Конверсия из клика в диалог",
+
+        "ads_destroying": "Реклама сейчас уничтожает прибыльность.",
+        "ads_ok": "Реклама всё ещё прибыльна на текущем уровне бюджета.",
+        "ads_weak": "Реклама пока ещё прибыльна, но эффективность уже слабая.",
+        "ads_not_problem": "Главная проблема в базовой экономике бизнеса, а не в масштабировании рекламы.",
+        "reduce_spend": "Снизить рекламный бюджет",
+        "hold_spend": "Оставить текущий бюджет",
+        "scale_gradually": "Масштабироваться постепенно",
+        "fix_conversion": "Сначала улучшить конверсию",
+        "fix_refunds": "Сначала решить проблему возвратов",
+        "fix_margin": "Сначала улучшить маржу",
+        "overspending_now": "Текущий рекламный бюджет, похоже, выше точки максимальной прибыли.",
+        "reducing_can_help": "Снижение рекламного бюджета может увеличить прибыль.",
+        "current_close_to_peak": "Текущий бюджет уже близок к наиболее прибыльной зоне.",
+        "still_room_to_scale": "До пика прибыли у вас ещё есть пространство для роста.",
     },
 }
 t = T[lang]
@@ -330,11 +371,16 @@ st.markdown(
 st.title(t["title"])
 st.write(t["subtitle"])
 
+
 # =========================
 # Helpers
 # =========================
 def safe_div(a, b):
     return a / b if b not in [0, 0.0, None] else 0.0
+
+
+def format_money(v):
+    return f"${v:,.2f}"
 
 
 def simulate_scale(
@@ -343,7 +389,7 @@ def simulate_scale(
     ad_spend: float,
     orders: float,
     refund_rate_pct: float,
-    spend_increase_pct: float,
+    spend_change_pct: float,
     cac_deterioration_per_100_pct: float,
 ):
     revenue = float(revenue or 0.0)
@@ -351,7 +397,7 @@ def simulate_scale(
     ad_spend = float(ad_spend or 0.0)
     orders = float(orders or 0.0)
     rr = float(refund_rate_pct or 0.0) / 100.0
-    g = float(spend_increase_pct or 0.0) / 100.0
+    g = float(spend_change_pct or 0.0) / 100.0
     k = float(cac_deterioration_per_100_pct or 0.0) / 100.0
 
     if orders <= 0:
@@ -366,25 +412,33 @@ def simulate_scale(
     gross_margin_pct = safe_div((revenue - cogs), revenue) * 100 if revenue > 0 else 0.0
 
     baseline_refund_cost = revenue * rr
-    baseline_profit = revenue - cogs - ad_spend - baseline_refund_cost
+    profit_before_ads = revenue - cogs - baseline_refund_cost
+    baseline_profit = profit_before_ads - ad_spend
+    ad_impact = profit_before_ads - baseline_profit  # equals ad_spend
 
     break_even_cac = contribution_margin
     risk_ratio = safe_div(cac, break_even_cac) if break_even_cac > 0 else 999.0
     margin_buffer = break_even_cac - cac
 
     new_spend = ad_spend * (1 + g)
+    if new_spend < 0:
+        new_spend = 0.0
 
     if cac <= 0:
         new_cac = 0.0
         new_orders = orders
     else:
+        # growth hurts CAC, reduction improves CAC symmetrically
         new_cac = cac * (1 + k * g)
-        new_orders = safe_div(new_spend, new_cac) if new_cac > 0 else orders
+        if new_cac < 0:
+            new_cac = 0.0
+        new_orders = safe_div(new_spend, new_cac) if new_cac > 0 else 0.0
 
     new_revenue = aov * new_orders
     new_cogs = cogs_per_order * new_orders
     new_refund_cost = new_revenue * rr
-    new_profit = new_revenue - new_cogs - new_spend - new_refund_cost
+    new_profit_before_ads = new_revenue - new_cogs - new_refund_cost
+    new_profit = new_profit_before_ads - new_spend
     new_risk_ratio = safe_div(new_cac, break_even_cac) if break_even_cac > 0 else 999.0
 
     return {
@@ -395,6 +449,8 @@ def simulate_scale(
         "gross_margin_pct": gross_margin_pct,
         "contribution_margin": contribution_margin,
         "baseline_profit": baseline_profit,
+        "profit_before_ads": profit_before_ads,
+        "ad_impact": ad_impact,
         "baseline_refund_cost": baseline_refund_cost,
         "risk_ratio": risk_ratio,
         "margin_buffer": margin_buffer,
@@ -404,6 +460,7 @@ def simulate_scale(
         "new_revenue": new_revenue,
         "new_cogs": new_cogs,
         "new_refund_cost": new_refund_cost,
+        "new_profit_before_ads": new_profit_before_ads,
         "new_profit": new_profit,
         "new_risk_ratio": new_risk_ratio,
     }
@@ -465,7 +522,7 @@ def find_safe_max_scale_pct(
             ad_spend=ad_spend,
             orders=orders,
             refund_rate_pct=refund_rate_pct,
-            spend_increase_pct=pct,
+            spend_change_pct=pct,
             cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
         )
         if r["new_profit"] >= 0:
@@ -475,6 +532,30 @@ def find_safe_max_scale_pct(
     return last_safe
 
 
+def find_loss_point_spend(
+    revenue: float,
+    cogs: float,
+    ad_spend: float,
+    orders: float,
+    refund_rate_pct: float,
+    cac_deterioration_per_100_pct: float,
+    max_search_pct: int = 300,
+):
+    for pct in range(0, max_search_pct + 1):
+        r = simulate_scale(
+            revenue=revenue,
+            cogs=cogs,
+            ad_spend=ad_spend,
+            orders=orders,
+            refund_rate_pct=refund_rate_pct,
+            spend_change_pct=pct,
+            cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
+        )
+        if r["new_profit"] < 0:
+            return r["new_spend"]
+    return None
+
+
 def build_profit_curve(
     revenue: float,
     cogs: float,
@@ -482,17 +563,18 @@ def build_profit_curve(
     orders: float,
     refund_rate_pct: float,
     cac_deterioration_per_100_pct: float,
+    min_scale_pct: int = -80,
     max_scale_pct: int = 300,
 ):
     points = []
-    for pct in range(0, max_scale_pct + 1, 10):
+    for pct in range(min_scale_pct, max_scale_pct + 1, 10):
         r = simulate_scale(
             revenue=revenue,
             cogs=cogs,
             ad_spend=ad_spend,
             orders=orders,
             refund_rate_pct=refund_rate_pct,
-            spend_increase_pct=pct,
+            spend_change_pct=pct,
             cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
         )
         points.append(
@@ -510,7 +592,8 @@ def plot_profit_curve(df_curve):
     ax.plot(df_curve["ad_spend"], df_curve["profit"], marker="o")
     ax.axhline(0, linewidth=1)
 
-    current = df_curve.iloc[0]
+    current_row = df_curve[df_curve["scale_pct"] == 0]
+    current = current_row.iloc[0] if not current_row.empty else df_curve.iloc[0]
     peak_idx = df_curve["profit"].idxmax()
     peak = df_curve.loc[peak_idx]
 
@@ -564,8 +647,33 @@ def profit_flag(p, baseline_revenue):
     return "🟢"
 
 
-def format_money(v):
-    return f"${v:,.2f}"
+def get_ads_verdict(res):
+    if res["baseline_profit"] < 0 and res["profit_before_ads"] > 0:
+        return t["ads_destroying"]
+    if res["baseline_profit"] > 0 and res["margin_buffer"] > 0 and res["risk_ratio"] < 0.7:
+        return t["ads_ok"]
+    if res["baseline_profit"] > 0 and res["margin_buffer"] > 0:
+        return t["ads_weak"]
+    return t["ads_not_problem"]
+
+
+def get_best_next_move(res, refund_rate, peak_spend, current_spend):
+    aov = res["AOV"]
+    cogs_per_order = res["cogs_per_order"]
+
+    if refund_rate >= 15:
+        return t["fix_refunds"]
+    if aov > 0 and (cogs_per_order / aov) > 0.50:
+        return t["fix_margin"]
+    if res["baseline_profit"] < 0 and res["profit_before_ads"] > 0:
+        return t["reduce_spend"]
+    if current_spend > peak_spend * 1.05:
+        return t["reduce_spend"]
+    if res["risk_ratio"] >= 0.80:
+        return t["fix_conversion"]
+    if res["risk_ratio"] < 0.55 and current_spend < peak_spend * 0.95:
+        return t["scale_gradually"]
+    return t["hold_spend"]
 
 
 # =========================
@@ -815,10 +923,14 @@ else:
     elif preset == t["preset_bad"]:
         default_decay = 50
 
-    spend_increase_pct = st.slider(t["scale_inc"], 0, 300, 100)
+    spend_change_pct = st.slider(t["scale_inc"], -80, 300, 100)
     cac_deterioration_per_100 = st.slider(t["scale_decay"], 0, 100, default_decay)
 
     st.markdown(f'<div class="small-note">{t["note"]}</div>', unsafe_allow_html=True)
+
+    peak_profit = 0.0
+    peak_spend = 0.0
+    cliff_detected = False
 
     if revenue > 0 and orders > 0:
         st.subheader(t["chart_hdr"])
@@ -831,6 +943,7 @@ else:
             orders=orders,
             refund_rate_pct=refund_rate,
             cac_deterioration_per_100_pct=cac_deterioration_per_100,
+            min_scale_pct=-80,
             max_scale_pct=300,
         )
 
@@ -850,7 +963,7 @@ else:
             ad_spend=ad_spend,
             orders=orders,
             refund_rate_pct=refund_rate,
-            spend_increase_pct=spend_increase_pct,
+            spend_change_pct=spend_change_pct,
             cac_deterioration_per_100_pct=cac_deterioration_per_100,
         )
 
@@ -860,6 +973,7 @@ else:
         cogs_per_order = res["cogs_per_order"]
         cac = res["cac"]
         break_even_cac = res["break_even_cac"]
+
         bottleneck = get_bottleneck(AOV, cogs_per_order, cac, break_even_cac, refund_rate)
         recommendation = get_recommendation(res, refund_rate)
 
@@ -873,6 +987,18 @@ else:
             max_search_pct=300,
         )
         max_safe_spend = ad_spend * (1 + safe_scale_pct / 100)
+        loss_point_spend = find_loss_point_spend(
+            revenue=revenue,
+            cogs=cogs,
+            ad_spend=ad_spend,
+            orders=orders,
+            refund_rate_pct=refund_rate,
+            cac_deterioration_per_100_pct=cac_deterioration_per_100,
+            max_search_pct=300,
+        )
+
+        ads_verdict = get_ads_verdict(res)
+        best_next_move = get_best_next_move(res, refund_rate, peak_spend, ad_spend)
 
         st.subheader(t["risk_hdr"])
         st.markdown(f'<div class="big-status {status_class}">{status}</div>', unsafe_allow_html=True)
@@ -886,12 +1012,12 @@ else:
         c4, c5, c6 = st.columns(3)
         c4.metric(t["orders"], f"{orders:.1f}")
         c5.metric("AOV", format_money(AOV))
-        c6.metric("Profit", format_money(res["baseline_profit"]))
+        c6.metric("CAC", format_money(cac))
 
         st.subheader(t["unit_hdr"])
         u1, u2, u3 = st.columns(3)
-        u1.metric("AOV", format_money(AOV))
-        u2.metric("CAC", format_money(cac))
+        u1.metric(t["profit_before_ads"], format_money(res["profit_before_ads"]))
+        u2.metric(t["profit_after_ads"], format_money(res["baseline_profit"]))
         u3.metric("Gross Margin %", f"{res['gross_margin_pct']:.1f}%")
 
         st.subheader(t["safe_cac_hdr"])
@@ -901,9 +1027,30 @@ else:
         s3.metric(t["margin_buffer"], format_money(res["margin_buffer"]))
 
         st.subheader(t["max_budget_hdr"])
-        b1, b2 = st.columns(2)
+        b1, b2, b3 = st.columns(3)
         b1.metric(t["current_ad_spend"], format_money(ad_spend))
-        b2.metric(t["max_safe_spend"], format_money(max_safe_spend))
+        b2.metric(t["peak_spend"], format_money(peak_spend))
+        b3.metric(t["max_safe_spend"], format_money(max_safe_spend))
+
+        b4, b5 = st.columns(2)
+        b4.metric(t["loss_point_spend"], format_money(loss_point_spend) if loss_point_spend is not None else "n/a")
+        b5.metric(t["ad_impact"], format_money(res["ad_impact"]))
+
+        st.subheader(t["real_analysis_hdr"])
+        r1, r2 = st.columns(2)
+        with r1:
+            st.write(f"**{t['ads_effect_hdr']}**")
+            st.write(ads_verdict)
+            if ad_spend > peak_spend * 1.05:
+                st.write(t["overspending_now"])
+                st.write(t["reducing_can_help"])
+            elif abs(ad_spend - peak_spend) / peak_spend <= 0.10 if peak_spend > 0 else False:
+                st.write(t["current_close_to_peak"])
+            else:
+                st.write(t["still_room_to_scale"])
+        with r2:
+            st.write(f"**{t['next_move_hdr']}**")
+            st.write(best_next_move)
 
         if diag:
             st.subheader(t["meta_diag"])
@@ -929,9 +1076,9 @@ else:
         st.subheader(t["main_insight_hdr"])
         diff = res["new_profit"] - res["baseline_profit"]
         if diff >= 0:
-            st.info(t["insight_grow_pct"].format(pct=spend_increase_pct, value=format_money(abs(diff))))
+            st.info(t["insight_grow_pct"].format(pct=spend_change_pct, value=format_money(abs(diff))))
         else:
-            st.info(t["insight_drop_pct"].format(pct=spend_increase_pct, value=format_money(abs(diff))))
+            st.info(t["insight_drop_pct"].format(pct=spend_change_pct, value=format_money(abs(diff))))
         st.write(t["insight_safe_limit"].format(pct=safe_scale_pct))
         if break_even_cac > 0:
             current_ratio_pct = round((cac / break_even_cac) * 100)
@@ -953,7 +1100,7 @@ else:
             st.warning(t["low_ceiling"])
 
         st.subheader(t["table_hdr"])
-        scenarios = [0, 25, 50, 75, 100, 150, 200, 250, 300]
+        scenarios = [-75, -50, -25, 0, 25, 50, 75, 100, 150, 200, 250, 300]
         rows = []
         for pct in scenarios:
             r = simulate_scale(
@@ -962,7 +1109,7 @@ else:
                 ad_spend=ad_spend,
                 orders=orders,
                 refund_rate_pct=refund_rate,
-                spend_increase_pct=pct,
+                spend_change_pct=pct,
                 cac_deterioration_per_100_pct=cac_deterioration_per_100,
             )
             rows.append(
