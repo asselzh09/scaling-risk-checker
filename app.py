@@ -1,4 +1,3 @@
-# testchange
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,14 +6,14 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Ad Budget Planner", layout="centered")
 
 # =========================
-# Language (UI only)
+# Language
 # =========================
 lang = st.selectbox("Language / Язык", ["English", "Русский"])
 
 T = {
     "English": {
         "title": "Ad Budget Planner",
-        "subtitle": "Estimate whether your ad budget is safe, profitable, and scalable.",
+        "subtitle": "See how far you can scale ads before profit starts breaking.",
 
         "biz_stage": "Choose your situation",
         "new_business": "New business",
@@ -22,18 +21,18 @@ T = {
 
         "mode": "Choose input mode",
         "m_manual": "Enter business numbers manually",
-        "m_csv": "Upload ad report (Meta CSV)",
+        "m_csv": "Upload Meta CSV",
         "m_funnel": "Enter ad funnel manually",
 
-        "rev": "Total Revenue ($)",
-        "cogs": "Total COGS ($)",
-        "spend": "Ad Spend ($)",
+        "rev": "Total revenue ($)",
+        "cogs": "Total product cost / COGS ($)",
+        "spend": "Current ad spend ($)",
         "orders": "Orders",
-        "refund": "Refund Rate (%)",
+        "refund": "Refund rate (%)",
 
         "upload_meta": "Upload ad report",
         "upload_csv": "Upload CSV",
-        "upload_hint": "Upload Meta CSV to auto-fill ad spend and conversations. Then enter average order value, product cost, and conversion rate.",
+        "upload_hint": "Upload a Meta CSV to auto-fill ad spend and conversations. Then enter average order value, product cost, and conversion rate.",
         "preview": "Preview",
 
         "camp_col": "Campaign name column",
@@ -43,7 +42,7 @@ T = {
         "select_campaigns": "Select campaigns to include",
 
         "derived": "### Derived from CSV",
-        "bridge": "Connect ad data to business numbers",
+        "bridge": "Connect ad report to business numbers",
 
         "close_rate": "Conversation to order rate",
         "aov": "Average order value ($)",
@@ -55,17 +54,21 @@ T = {
         "clicks": "Clicks (optional)",
         "impr": "Impressions (optional)",
 
-        "scale_header": "Growth assumptions",
-        "scale_inc": "Planned ad budget increase (%)",
-        "scale_decay": "If budget increases, customer cost becomes more expensive by (%) per +100% spend",
-        "note": "Example: 25% means if you double spend, getting one customer becomes about 25% more expensive.",
+        "scale_header": "Scaling scenario",
+        "preset_label": "How does your ad efficiency usually behave when you scale?",
+        "preset_opt": "Optimistic",
+        "preset_real": "Realistic",
+        "preset_bad": "Pessimistic",
+        "scale_inc": "How much do you want to increase ad budget?",
+        "scale_decay": "How much can customer acquisition cost rise if you double spend?",
+        "note": "Example: if CAC is now $20 and this is 25%, then after doubling spend the model assumes CAC may rise to about $25.",
 
         "analyze": "Analyze",
 
-        "no_msg_rows": "No rows found where Result indicator contains 'messaging_conversation_started'.",
-        "conv_zero": "Conversations sum to 0. Can't proceed.",
-        "warn_orders": "Estimated orders are below 1. I’ll still run with Orders=1 to avoid divide-by-zero.",
-        "warn_convos": "Conversations must be > 0 to use this mode.",
+        "no_msg_rows": "No rows found where the result indicator contains 'messaging_conversation_started'.",
+        "conv_zero": "Conversations sum to 0. Can't continue.",
+        "warn_orders": "Estimated orders are below 1. The app will use Orders = 1 to avoid division by zero.",
+        "warn_convos": "Conversations must be greater than 0 to use this mode.",
 
         "status_hold": "🔴 HOLD — Scaling now will likely result in a net loss.",
         "status_fragile": "🟠 FRAGILE — Small CAC deterioration can break profitability.",
@@ -77,29 +80,45 @@ T = {
         "bottleneck_margin": "Low margin limits safe scaling.",
         "bottleneck_ok": "No major structural problem detected.",
 
+        "risk_hdr": "Risk meter",
         "baseline_hdr": "Current business snapshot",
-        "meta_diag": "Ad diagnostics (optional)",
-        "main_constraint": "Main Constraint",
-        "sim_hdr": "Growth simulation",
-        "safe_hdr": "Safe Growth Limit",
+        "unit_hdr": "Unit economics",
+        "safe_cac_hdr": "Safe CAC",
+        "max_budget_hdr": "Maximum safe ad budget",
+        "main_constraint": "Main constraint",
+        "rec_hdr": "Recommendation",
+        "main_insight_hdr": "Main insight",
+        "sim_hdr": "Selected scaling scenario",
+        "safe_hdr": "Safe scaling limit",
         "safe_line": "Maximum safe ad budget increase (profit ≥ 0)",
-        "low_ceiling": "Low ceiling: aggressive scaling may quickly turn unprofitable unless margin, refunds, or CAC improve.",
-        "table_hdr": "Scenario Table",
-        "new_cac_na": "New customer cost: n/a (baseline CAC is 0)",
+        "low_ceiling": "Low ceiling: aggressive scaling may quickly become unprofitable unless you improve margin, refunds, or CAC.",
+        "table_hdr": "Scenario table",
+        "new_cac_na": "New CAC: n/a (baseline CAC is 0)",
 
-        "chart_hdr": "Profit Sensitivity Curve",
-        "chart_note": "This shows where more ad spend stops increasing take-home profit.",
+        "chart_hdr": "Profit sensitivity curve",
+        "chart_note": "This shows where higher ad spend stops increasing total profit.",
         "current_point": "Current point",
         "peak_point": "Peak profit point",
         "breakeven_point": "Break-even point",
-
-        "rec_hdr": "Actionable Insight",
-        "risk_hdr": "Risk Meter",
-        "unit_hdr": "Unit Economics",
-        "peak_hdr": "Peak Profit",
         "peak_profit": "Peak profit",
         "peak_spend": "Best ad spend",
-        "profit_cliff": "Profit cliff detected: beyond the peak, more spend reduces total profit.",
+        "profit_cliff": "Profit cliff detected: after the peak, more spend reduces total profit.",
+
+        "safe_cac": "Safe CAC",
+        "current_cac": "Current CAC",
+        "margin_buffer": "Margin buffer",
+
+        "current_ad_spend": "Current ad spend",
+        "max_safe_spend": "Maximum safe spend",
+
+        "forecast_spend": "Forecast spend",
+        "forecast_cac": "Forecast CAC",
+        "forecast_orders": "Forecast orders",
+        "forecast_revenue": "Forecast revenue",
+        "forecast_profit": "Forecast profit",
+
+        "spend_increase_col": "Spend increase %",
+        "status_col": "Status",
 
         "newbiz_header": "New business planning",
         "planned_budget": "Planned ad budget ($)",
@@ -108,27 +127,35 @@ T = {
         "expected_orders": "Expected customers",
         "expected_revenue": "Expected revenue",
         "expected_profit": "Expected profit",
-        "rec_budget": "Suggested ad budget for testing",
+        "rec_budget": "Suggested test budget",
         "newbiz_result": "New business estimate",
-        "newbiz_note": "This mode is for planning your first ad budget before you have real campaign data.",
-
-        "safe": "SAFE",
-        "fragile": "FRAGILE",
-        "hold": "HOLD",
-
-        "forecast_spend": "Forecast Spend",
-        "forecast_cac": "Forecast CAC",
-        "forecast_orders": "Forecast Orders",
-        "forecast_revenue": "Forecast Revenue",
-        "forecast_profit": "Forecast Profit",
-        "spend_increase_col": "Spend Increase %",
-        "status_col": "Status",
+        "newbiz_note": "Use this mode if you are planning your first ad budget and don't have real campaign data yet.",
 
         "example_btn": "Load example data",
+
+        "reco_neg": "Your unit economics are negative before ads. Rework price, product cost, or refund rate first.",
+        "reco_refund": "Refund rate is too high. Scaling ads now will amplify losses. Fix product quality, customer expectations, or support first.",
+        "reco_margin": "Your margins are thin. Improve AOV or reduce product cost before pushing more spend.",
+        "reco_cac_close": "Your current CAC is already too close to break-even. Scale carefully or improve conversion first.",
+        "reco_good": "Healthy margin buffer. You still have room before CAC reaches break-even.",
+        "reco_mid": "Economics look workable, but monitor CAC deterioration closely as you scale.",
+
+        "insight_drop_pct": "If you increase ad budget by {pct}%, profit may drop by {value}.",
+        "insight_grow_pct": "If you increase ad budget by {pct}%, profit may grow by {value}.",
+        "insight_safe_limit": "Your business can safely scale ads by up to {pct}% before profit turns negative.",
+        "insight_cac_ratio": "Your current CAC is already {pct}% of break-even CAC.",
+
+        "meta_diag": "Ad diagnostics (optional)",
+        "cost_per_convo": "Cost per conversation",
+        "conv_to_order": "Conversation to order rate",
+        "estimated_cac": "Estimated customer acquisition cost",
+        "ctr": "CTR",
+        "cpc": "CPC",
+        "click_to_convo": "Click to conversation rate",
     },
     "Русский": {
         "title": "Ad Budget Planner",
-        "subtitle": "Оцените, безопасен ли ваш рекламный бюджет, будет ли он прибыльным и можно ли его масштабировать.",
+        "subtitle": "Показывает, как далеко можно масштабировать рекламу до того, как прибыль начнёт ломаться.",
 
         "biz_stage": "Выберите вашу ситуацию",
         "new_business": "Новый бизнес",
@@ -136,84 +163,104 @@ T = {
 
         "mode": "Выберите способ ввода",
         "m_manual": "Ввести цифры бизнеса вручную",
-        "m_csv": "Загрузить рекламный отчёт (Meta CSV)",
+        "m_csv": "Загрузить Meta CSV",
         "m_funnel": "Ввести рекламную воронку вручную",
 
         "rev": "Общая выручка ($)",
-        "cogs": "Общая себестоимость ($)",
-        "spend": "Расход на рекламу ($)",
+        "cogs": "Общая себестоимость / COGS ($)",
+        "spend": "Текущий расход на рекламу ($)",
         "orders": "Заказы",
         "refund": "Процент возвратов (%)",
 
         "upload_meta": "Загрузить рекламный отчёт",
         "upload_csv": "Загрузить CSV",
-        "upload_hint": "Загрузите Meta CSV, чтобы автоматически заполнить рекламный расход и диалоги. Затем введите средний чек, себестоимость и конверсию.",
+        "upload_hint": "Загрузите Meta CSV, чтобы автоматически подтянуть расходы и диалоги. Затем введите средний чек, себестоимость и конверсию.",
         "preview": "Превью",
 
-        "camp_col": "Колонка названия кампании",
-        "spend_col": "Колонка расхода на рекламу",
-        "results_col": "Колонка результатов",
-        "indicator_col": "Колонка типа результата",
+        "camp_col": "Колонка с названием кампании",
+        "spend_col": "Колонка с расходом на рекламу",
+        "results_col": "Колонка с результатами",
+        "indicator_col": "Колонка с типом результата",
         "select_campaigns": "Выберите кампании",
 
         "derived": "### Получено из CSV",
-        "bridge": "Связка рекламных данных с бизнес-данными",
+        "bridge": "Свяжите рекламный отчёт с бизнес-цифрами",
 
         "close_rate": "Конверсия из диалога в заказ",
         "aov": "Средний чек ($)",
         "cogs_po": "Себестоимость одного заказа ($)",
 
-        "manual_funnel_header": "Ввод рекламной воронки вручную",
+        "manual_funnel_header": "Ручной ввод рекламной воронки",
         "spend_f": "Расход на рекламу ($)",
         "convos": "Диалоги",
         "clicks": "Клики (опционально)",
         "impr": "Показы (опционально)",
 
-        "scale_header": "Параметры роста",
-        "scale_inc": "Планируемое увеличение рекламного бюджета (%)",
-        "scale_decay": "Если бюджет растёт, стоимость клиента дорожает на (%) при +100% бюджета",
-        "note": "Пример: 25% означает, что если вы удвоите бюджет, привлечение одного клиента станет примерно на 25% дороже.",
+        "scale_header": "Сценарий масштабирования",
+        "preset_label": "Как обычно ведёт себя реклама, когда вы увеличиваете бюджет?",
+        "preset_opt": "Оптимистичный",
+        "preset_real": "Реалистичный",
+        "preset_bad": "Пессимистичный",
+        "scale_inc": "Насколько вы хотите увеличить рекламный бюджет?",
+        "scale_decay": "Насколько может вырасти стоимость клиента, если вы удвоите бюджет?",
+        "note": "Пример: если сейчас CAC = $20 и здесь стоит 25%, то при удвоении бюджета модель предполагает, что CAC может вырасти примерно до $25.",
 
         "analyze": "Рассчитать",
 
-        "no_msg_rows": "Не найдено строк, где Result indicator содержит 'messaging_conversation_started'.",
+        "no_msg_rows": "Не найдено строк, где тип результата содержит 'messaging_conversation_started'.",
         "conv_zero": "Сумма диалогов = 0. Невозможно продолжить.",
-        "warn_orders": "Расчётные заказы меньше 1. Я всё равно запущу с Orders=1, чтобы избежать деления на ноль.",
-        "warn_convos": "Диалоги должны быть > 0 для этого режима.",
+        "warn_orders": "Расчётные заказы меньше 1. Приложение использует Orders = 1, чтобы избежать деления на ноль.",
+        "warn_convos": "Диалоги должны быть больше 0 для этого режима.",
 
         "status_hold": "🔴 HOLD — масштабирование с высокой вероятностью приведёт к убытку.",
-        "status_fragile": "🟠 FRAGILE — небольшое ухудшение CAC ломает прибыльность.",
+        "status_fragile": "🟠 FRAGILE — даже небольшое ухудшение CAC может сломать прибыльность.",
         "status_safe": "🟢 CONTROLLED — юнит-экономика выдерживает некоторый рост.",
 
         "bottleneck_neg": "Юнит-экономика отрицательная ещё до рекламы.",
         "bottleneck_cac": "Стоимость привлечения клиента — главный риск роста.",
         "bottleneck_ref": "Возвраты снижают прибыльность.",
-        "bottleneck_margin": "Низкая маржа ограничивает безопасный рост.",
+        "bottleneck_margin": "Низкая маржа ограничивает безопасное масштабирование.",
         "bottleneck_ok": "Серьёзных структурных проблем не обнаружено.",
 
+        "risk_hdr": "Индикатор риска",
         "baseline_hdr": "Текущая картина бизнеса",
-        "meta_diag": "Диагностика рекламы (опционально)",
+        "unit_hdr": "Юнит-экономика",
+        "safe_cac_hdr": "Безопасный CAC",
+        "max_budget_hdr": "Максимально безопасный рекламный бюджет",
         "main_constraint": "Главное ограничение",
-        "sim_hdr": "Симуляция роста",
+        "rec_hdr": "Рекомендация",
+        "main_insight_hdr": "Главный вывод",
+        "sim_hdr": "Выбранный сценарий масштабирования",
         "safe_hdr": "Предел безопасного роста",
-        "safe_line": "Максимальное безопасное увеличение бюджета (прибыль ≥ 0)",
+        "safe_line": "Максимальное безопасное увеличение рекламного бюджета (прибыль ≥ 0)",
         "low_ceiling": "Низкий предел: агрессивный рост может быстро увести вас в минус, если не улучшить маржу, возвраты или CAC.",
         "table_hdr": "Таблица сценариев",
-        "new_cac_na": "Новая стоимость клиента: n/a (базовый CAC = 0)",
+        "new_cac_na": "Новый CAC: n/a (базовый CAC = 0)",
 
         "chart_hdr": "Кривая чувствительности прибыли",
-        "chart_note": "Показывает, где рост рекламного бюджета перестаёт увеличивать прибыль.",
+        "chart_note": "Показывает, в какой точке рост рекламного бюджета перестаёт увеличивать общую прибыль.",
         "current_point": "Текущая точка",
         "peak_point": "Точка максимальной прибыли",
         "breakeven_point": "Точка безубыточности",
-
-        "rec_hdr": "Рекомендация",
-        "risk_hdr": "Индикатор риска",
-        "unit_hdr": "Юнит-экономика",
-        "peak_hdr": "Пик прибыли",
         "peak_profit": "Максимальная прибыль",
         "peak_spend": "Лучший рекламный бюджет",
-        "profit_cliff": "Обнаружен обрыв прибыли: после пика рост бюджета снижает общую прибыль.",
+        "profit_cliff": "Обнаружен обрыв прибыли: после пика дальнейший рост бюджета снижает общую прибыль.",
+
+        "safe_cac": "Безопасный CAC",
+        "current_cac": "Текущий CAC",
+        "margin_buffer": "Запас маржи",
+
+        "current_ad_spend": "Текущий рекламный бюджет",
+        "max_safe_spend": "Максимально безопасный бюджет",
+
+        "forecast_spend": "Прогноз расходов",
+        "forecast_cac": "Прогноз CAC",
+        "forecast_orders": "Прогноз заказов",
+        "forecast_revenue": "Прогноз выручки",
+        "forecast_profit": "Прогноз прибыли",
+
+        "spend_increase_col": "Рост бюджета %",
+        "status_col": "Статус",
 
         "newbiz_header": "Планирование для нового бизнеса",
         "planned_budget": "Планируемый рекламный бюджет ($)",
@@ -224,21 +271,29 @@ T = {
         "expected_profit": "Ожидаемая прибыль",
         "rec_budget": "Рекомендуемый тестовый бюджет",
         "newbiz_result": "Оценка для нового бизнеса",
-        "newbiz_note": "Этот режим нужен для планирования первого рекламного бюджета, если у вас ещё нет реальных рекламных данных.",
-
-        "safe": "SAFE",
-        "fragile": "FRAGILE",
-        "hold": "HOLD",
-
-        "forecast_spend": "Прогноз расходов",
-        "forecast_cac": "Прогноз CAC",
-        "forecast_orders": "Прогноз заказов",
-        "forecast_revenue": "Прогноз выручки",
-        "forecast_profit": "Прогноз прибыли",
-        "spend_increase_col": "Рост бюджета %",
-        "status_col": "Статус",
+        "newbiz_note": "Используйте этот режим, если вы только планируете первый рекламный бюджет и ещё не имеете реальных данных по рекламе.",
 
         "example_btn": "Загрузить пример",
+
+        "reco_neg": "Юнит-экономика отрицательная ещё до рекламы. Сначала пересоберите цену, себестоимость или уровень возвратов.",
+        "reco_refund": "Процент возвратов слишком высокий. Масштабирование рекламы усилит убытки. Сначала исправьте качество продукта, ожидания клиента или поддержку.",
+        "reco_margin": "Маржа слишком тонкая. Увеличьте средний чек или снизьте себестоимость перед ростом рекламного бюджета.",
+        "reco_cac_close": "Ваш CAC уже слишком близок к точке безубыточности. Масштабируйтесь осторожно или сначала улучшите конверсию.",
+        "reco_good": "Хороший запас маржи. У вас ещё есть пространство до точки безубыточности по CAC.",
+        "reco_mid": "Юнит-экономика выглядит рабочей, но внимательно следите за ухудшением CAC при масштабировании.",
+
+        "insight_drop_pct": "Если увеличить рекламный бюджет на {pct}%, прибыль может снизиться на {value}.",
+        "insight_grow_pct": "Если увеличить рекламный бюджет на {pct}%, прибыль может вырасти на {value}.",
+        "insight_safe_limit": "Ваш бизнес может безопасно увеличить рекламу максимум на {pct}%, прежде чем прибыль станет отрицательной.",
+        "insight_cac_ratio": "Ваш текущий CAC уже составляет {pct}% от безопасного CAC.",
+
+        "meta_diag": "Диагностика рекламы (опционально)",
+        "cost_per_convo": "Стоимость диалога",
+        "conv_to_order": "Конверсия из диалога в заказ",
+        "estimated_cac": "Оценочный CAC",
+        "ctr": "CTR",
+        "cpc": "CPC",
+        "click_to_convo": "Конверсия из клика в диалог",
     },
 }
 t = T[lang]
@@ -315,7 +370,7 @@ def simulate_scale(
 
     break_even_cac = contribution_margin
     risk_ratio = safe_div(cac, break_even_cac) if break_even_cac > 0 else 999.0
-    margin_buffer = safe_div((break_even_cac - cac), break_even_cac) if break_even_cac > 0 else -1.0
+    margin_buffer = break_even_cac - cac
 
     new_spend = ad_spend * (1 + g)
 
@@ -341,8 +396,8 @@ def simulate_scale(
         "contribution_margin": contribution_margin,
         "baseline_profit": baseline_profit,
         "baseline_refund_cost": baseline_refund_cost,
-        "margin_buffer": margin_buffer,
         "risk_ratio": risk_ratio,
+        "margin_buffer": margin_buffer,
         "new_spend": new_spend,
         "new_cac": new_cac,
         "new_orders": new_orders,
@@ -355,13 +410,11 @@ def simulate_scale(
 
 
 def get_status(res):
-    if res["baseline_profit"] < 0 or res["break_even_cac"] <= 0:
-        return t["status_hold"], "hold", t["hold"]
-    if res["new_profit"] < 0:
-        return t["status_hold"], "hold", t["hold"]
-    if res["new_risk_ratio"] > 0.80 or res["margin_buffer"] < 0.20:
-        return t["status_fragile"], "fragile", t["fragile"]
-    return t["status_safe"], "safe", t["safe"]
+    if res["baseline_profit"] < 0 or res["break_even_cac"] <= 0 or res["new_profit"] < 0:
+        return t["status_hold"], "hold"
+    if res["new_risk_ratio"] > 0.80:
+        return t["status_fragile"], "fragile"
+    return t["status_safe"], "safe"
 
 
 def get_bottleneck(aov, cogs_per_order, cac, break_even_cac, refund_rate):
@@ -383,45 +436,16 @@ def get_recommendation(res, refund_rate):
     break_even_cac = res["break_even_cac"]
 
     if break_even_cac <= 0:
-        return (
-            "Your unit economics are negative before ads. Rework price, product cost, or refund rate first."
-            if lang == "English"
-            else "Юнит-экономика отрицательная ещё до рекламы. Сначала пересоберите цену, себестоимость или возвраты."
-        )
-
+        return t["reco_neg"]
     if refund_rate >= 15:
-        return (
-            "Refund rate is too high. Scaling ads now will amplify losses. Fix product quality, expectation setting, or support first."
-            if lang == "English"
-            else "Процент возвратов слишком высокий. Масштабирование рекламы усилит убытки. Сначала исправьте качество продукта, ожидания клиента или поддержку."
-        )
-
+        return t["reco_refund"]
     if aov > 0 and (cogs_per_order / aov) > 0.50:
-        return (
-            "Your margins are thin. Improve AOV or reduce product cost before pushing more spend."
-            if lang == "English"
-            else "Маржа слишком тонкая. Увеличьте средний чек или снизьте себестоимость перед ростом рекламного бюджета."
-        )
-
+        return t["reco_margin"]
     if break_even_cac > 0 and cac >= break_even_cac * 0.80:
-        return (
-            "Your current CAC is already too close to break-even. Scale carefully or improve conversion first."
-            if lang == "English"
-            else "Ваш CAC уже слишком близок к пределу безубыточности. Масштабируйтесь осторожно или сначала улучшите конверсию."
-        )
-
+        return t["reco_cac_close"]
     if break_even_cac > 0 and cac < break_even_cac * 0.50:
-        return (
-            f"Healthy margin buffer. You can tolerate roughly up to {(1 - cac / break_even_cac) * 100:.0f}% more CAC before hitting break-even."
-            if lang == "English"
-            else f"Хороший запас маржи. Вы можете выдержать примерно до {(1 - cac / break_even_cac) * 100:.0f}% роста CAC до точки безубыточности."
-        )
-
-    return (
-        "Economics look workable, but monitor CAC deterioration closely as you scale."
-        if lang == "English"
-        else "Юнит-экономика выглядит рабочей, но внимательно следите за ухудшением CAC при масштабировании."
-    )
+        return t["reco_good"]
+    return t["reco_mid"]
 
 
 def find_safe_max_scale_pct(
@@ -471,12 +495,13 @@ def build_profit_curve(
             spend_increase_pct=pct,
             cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
         )
-        points.append({
-            "scale_pct": pct,
-            "ad_spend": r["new_spend"],
-            "profit": r["new_profit"],
-            "cac": r["new_cac"],
-        })
+        points.append(
+            {
+                "scale_pct": pct,
+                "ad_spend": r["new_spend"],
+                "profit": r["new_profit"],
+            }
+        )
     return pd.DataFrame(points)
 
 
@@ -539,6 +564,10 @@ def profit_flag(p, baseline_revenue):
     return "🟢"
 
 
+def format_money(v):
+    return f"${v:,.2f}"
+
+
 # =========================
 # Top hierarchy
 # =========================
@@ -594,10 +623,10 @@ if biz_stage == "new":
 
         st.subheader(t["newbiz_result"])
         st.write(f"{t['expected_orders']}: **{expected_orders:.1f}**")
-        st.write(f"{t['expected_revenue']}: **${expected_revenue:.2f}**")
-        st.write(f"{t['expected_profit']}: **${expected_profit:.2f}**")
+        st.write(f"{t['expected_revenue']}: **{format_money(expected_revenue)}**")
+        st.write(f"{t['expected_profit']}: **{format_money(expected_profit)}**")
         if suggested_budget > 0:
-            st.write(f"{t['rec_budget']}: **${suggested_budget:.2f}**")
+            st.write(f"{t['rec_budget']}: **{format_money(suggested_budget)}**")
         st.markdown(f'<div class="big-status {status_class}">{status}</div>', unsafe_allow_html=True)
 
 # =========================
@@ -695,15 +724,15 @@ else:
         meta_convos = float(df_sel[col_results].sum())
 
         st.markdown(t["derived"])
-        st.write(f"Spend (selected): **{meta_spend:.2f}**")
-        st.write(f"Messaging conversations (selected): **{meta_convos:.0f}**")
+        st.write(f"{t['current_ad_spend']}: **{format_money(meta_spend)}**")
+        st.write(f"{t['convos']}: **{meta_convos:.0f}**")
 
         if meta_convos <= 0:
             st.error(t["conv_zero"])
             st.stop()
 
         cpa_msg = meta_spend / meta_convos
-        st.write(f"Cost per conversation: **{cpa_msg:.2f}**")
+        st.write(f"{t['cost_per_convo']}: **{format_money(cpa_msg)}**")
 
         st.divider()
         st.subheader(t["bridge"])
@@ -771,12 +800,26 @@ else:
 
     st.divider()
     st.subheader(t["scale_header"])
-    spend_increase_pct = st.slider(t["scale_inc"], 0, 300, 50)
-    cac_deterioration_per_100 = st.slider(t["scale_decay"], 0, 100, 25)
+
+    preset = st.radio(
+        t["preset_label"],
+        [t["preset_opt"], t["preset_real"], t["preset_bad"]],
+        horizontal=True,
+    )
+
+    default_decay = 25
+    if preset == t["preset_opt"]:
+        default_decay = 10
+    elif preset == t["preset_real"]:
+        default_decay = 25
+    elif preset == t["preset_bad"]:
+        default_decay = 50
+
+    spend_increase_pct = st.slider(t["scale_inc"], 0, 300, 100)
+    cac_deterioration_per_100 = st.slider(t["scale_decay"], 0, 100, default_decay)
 
     st.markdown(f'<div class="small-note">{t["note"]}</div>', unsafe_allow_html=True)
 
-    # Chart shows immediately
     if revenue > 0 and orders > 0:
         st.subheader(t["chart_hdr"])
         st.caption(t["chart_note"])
@@ -794,8 +837,8 @@ else:
         peak_profit, peak_spend, cliff_detected = plot_profit_curve(df_curve)
 
         p1, p2 = st.columns(2)
-        p1.metric(t["peak_profit"], f"${peak_profit:.2f}")
-        p2.metric(t["peak_spend"], f"${peak_spend:.2f}")
+        p1.metric(t["peak_profit"], format_money(peak_profit))
+        p2.metric(t["peak_spend"], format_money(peak_spend))
 
         if cliff_detected:
             st.warning(t["profit_cliff"])
@@ -811,7 +854,7 @@ else:
             cac_deterioration_per_100_pct=cac_deterioration_per_100,
         )
 
-        status, status_class, status_short = get_status(res)
+        status, status_class = get_status(res)
 
         AOV = res["AOV"]
         cogs_per_order = res["cogs_per_order"]
@@ -829,42 +872,53 @@ else:
             cac_deterioration_per_100_pct=cac_deterioration_per_100,
             max_search_pct=300,
         )
+        max_safe_spend = ad_spend * (1 + safe_scale_pct / 100)
 
         st.subheader(t["risk_hdr"])
         st.markdown(f'<div class="big-status {status_class}">{status}</div>', unsafe_allow_html=True)
 
         st.subheader(t["baseline_hdr"])
         c1, c2, c3 = st.columns(3)
-        c1.metric("Revenue", f"${revenue:.2f}")
-        c2.metric("COGS", f"${cogs:.2f}")
-        c3.metric("Ad Spend", f"${ad_spend:.2f}")
+        c1.metric(t["rev"], format_money(revenue))
+        c2.metric(t["cogs"], format_money(cogs))
+        c3.metric(t["spend"], format_money(ad_spend))
 
         c4, c5, c6 = st.columns(3)
-        c4.metric("Orders", f"{orders:.1f}")
-        c5.metric("AOV", f"${AOV:.2f}")
-        c6.metric("Current Profit", f"${res['baseline_profit']:.2f}")
+        c4.metric(t["orders"], f"{orders:.1f}")
+        c5.metric("AOV", format_money(AOV))
+        c6.metric("Profit", format_money(res["baseline_profit"]))
 
         st.subheader(t["unit_hdr"])
-        u1, u2, u3, u4 = st.columns(4)
-        u1.metric("CAC", f"${cac:.2f}")
-        u2.metric("Break-even CAC", f"${break_even_cac:.2f}")
-        u3.metric("Contribution Margin", f"${res['contribution_margin']:.2f}")
-        u4.metric("Gross Margin %", f"{res['gross_margin_pct']:.1f}%")
+        u1, u2, u3 = st.columns(3)
+        u1.metric("AOV", format_money(AOV))
+        u2.metric("CAC", format_money(cac))
+        u3.metric("Gross Margin %", f"{res['gross_margin_pct']:.1f}%")
+
+        st.subheader(t["safe_cac_hdr"])
+        s1, s2, s3 = st.columns(3)
+        s1.metric(t["safe_cac"], format_money(break_even_cac))
+        s2.metric(t["current_cac"], format_money(cac))
+        s3.metric(t["margin_buffer"], format_money(res["margin_buffer"]))
+
+        st.subheader(t["max_budget_hdr"])
+        b1, b2 = st.columns(2)
+        b1.metric(t["current_ad_spend"], format_money(ad_spend))
+        b2.metric(t["max_safe_spend"], format_money(max_safe_spend))
 
         if diag:
             st.subheader(t["meta_diag"])
             if diag.get("cpa_msg") is not None:
-                st.write(f"Cost per conversation: **{diag['cpa_msg']:.2f}**")
+                st.write(f"{t['cost_per_convo']}: **{format_money(diag['cpa_msg'])}**")
             if diag.get("close_rate") is not None:
-                st.write(f"Conversation to order rate: **{diag['close_rate']:.2%}**")
+                st.write(f"{t['conv_to_order']}: **{diag['close_rate']:.2%}**")
             if diag.get("implied_cac") is not None:
-                st.write(f"Estimated customer acquisition cost: **{diag['implied_cac']:.2f}**")
+                st.write(f"{t['estimated_cac']}: **{format_money(diag['implied_cac'])}**")
             if diag.get("ctr") is not None:
-                st.write(f"CTR: **{diag['ctr']:.2%}**")
+                st.write(f"{t['ctr']}: **{diag['ctr']:.2%}**")
             if diag.get("cpc") is not None:
-                st.write(f"CPC: **{diag['cpc']:.2f}**")
+                st.write(f"{t['cpc']}: **{format_money(diag['cpc'])}**")
             if diag.get("cvr_msg") is not None:
-                st.write(f"Click to conversation rate: **{diag['cvr_msg']:.2%}**")
+                st.write(f"{t['click_to_convo']}: **{diag['cvr_msg']:.2%}**")
 
         st.subheader(t["main_constraint"])
         st.write(bottleneck)
@@ -872,15 +926,26 @@ else:
         st.subheader(t["rec_hdr"])
         st.info(recommendation)
 
-        st.subheader(t["sim_hdr"])
-        s1, s2, s3 = st.columns(3)
-        s1.metric(t["forecast_spend"], f"${res['new_spend']:.2f}")
-        s2.metric(t["forecast_cac"], f"${res['new_cac']:.2f}" if res["new_cac"] > 0 else "n/a")
-        s3.metric(t["forecast_orders"], f"{res['new_orders']:.1f}")
+        st.subheader(t["main_insight_hdr"])
+        diff = res["new_profit"] - res["baseline_profit"]
+        if diff >= 0:
+            st.info(t["insight_grow_pct"].format(pct=spend_increase_pct, value=format_money(abs(diff))))
+        else:
+            st.info(t["insight_drop_pct"].format(pct=spend_increase_pct, value=format_money(abs(diff))))
+        st.write(t["insight_safe_limit"].format(pct=safe_scale_pct))
+        if break_even_cac > 0:
+            current_ratio_pct = round((cac / break_even_cac) * 100)
+            st.write(t["insight_cac_ratio"].format(pct=current_ratio_pct))
 
-        s4, s5 = st.columns(2)
-        s4.metric(t["forecast_revenue"], f"${res['new_revenue']:.2f}")
-        s5.metric(t["forecast_profit"], f"${res['new_profit']:.2f}")
+        st.subheader(t["sim_hdr"])
+        x1, x2, x3 = st.columns(3)
+        x1.metric(t["forecast_spend"], format_money(res["new_spend"]))
+        x2.metric(t["forecast_cac"], format_money(res["new_cac"]) if res["new_cac"] > 0 else "n/a")
+        x3.metric(t["forecast_orders"], f"{res['new_orders']:.1f}")
+
+        x4, x5 = st.columns(2)
+        x4.metric(t["forecast_revenue"], format_money(res["new_revenue"]))
+        x5.metric(t["forecast_profit"], format_money(res["new_profit"]))
 
         st.subheader(t["safe_hdr"])
         st.write(f"{t['safe_line']}: **{safe_scale_pct}%**")
@@ -900,15 +965,17 @@ else:
                 spend_increase_pct=pct,
                 cac_deterioration_per_100_pct=cac_deterioration_per_100,
             )
-            rows.append({
-                t["status_col"]: profit_flag(r["new_profit"], revenue),
-                t["spend_increase_col"]: pct,
-                t["forecast_spend"]: round(r["new_spend"], 2),
-                t["forecast_cac"]: round(r["new_cac"], 2) if r["new_cac"] > 0 else None,
-                t["forecast_orders"]: round(r["new_orders"], 1),
-                t["forecast_revenue"]: round(r["new_revenue"], 2),
-                t["forecast_profit"]: round(r["new_profit"], 2),
-            })
+            rows.append(
+                {
+                    t["status_col"]: profit_flag(r["new_profit"], revenue),
+                    t["spend_increase_col"]: pct,
+                    t["forecast_spend"]: round(r["new_spend"], 2),
+                    t["forecast_cac"]: round(r["new_cac"], 2) if r["new_cac"] > 0 else None,
+                    t["forecast_orders"]: round(r["new_orders"], 1),
+                    t["forecast_revenue"]: round(r["new_revenue"], 2),
+                    t["forecast_profit"]: round(r["new_profit"], 2),
+                }
+            )
 
         df_out = pd.DataFrame(rows)
         st.dataframe(df_out, use_container_width=True)
