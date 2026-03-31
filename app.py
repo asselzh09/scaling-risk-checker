@@ -20,7 +20,7 @@ T = {
 
         "mode": "Choose input mode",
         "m_manual": "Enter business numbers manually",
-        "m_csv": "Upload Meta CSV",
+        "m_csv": "Upload Meta CSV/XLSX",
         "m_funnel": "Enter ad funnel manually",
 
         "rev": "Total revenue ($)",
@@ -30,8 +30,8 @@ T = {
         "refund": "Refund rate (%)",
 
         "upload_meta": "Upload ad report",
-        "upload_csv": "Upload CSV",
-        "upload_hint": "Upload a Meta CSV to auto-fill ad spend and conversations. Then enter average order value, product cost, and conversion rate.",
+        "upload_csv": "Upload CSV/XLSX",
+        "upload_hint": "Upload a Meta CSV or XLSX report to auto-fill ad spend and conversations. Then enter average order value, product cost, and conversion rate.",
         "preview": "Preview",
 
         "camp_col": "Campaign name column",
@@ -64,7 +64,9 @@ T = {
 
         "analyze": "Analyze",
 
-        "no_msg_rows": "No rows found where the result indicator contains 'messaging_conversation_started'.",
+        "no_msg_rows": "No messaging-specific rows were found in the selected result type column.",
+        "msg_fallback_all": "No messaging-specific rows found. Using all selected rows instead.",
+        "indicator_values": "Unique values from the selected result type column:",
         "conv_zero": "Conversations sum to 0. Can't continue.",
         "warn_orders": "Estimated orders are below 1. The app will use Orders = 1 to avoid division by zero.",
         "warn_convos": "Conversations must be greater than 0 to use this mode.",
@@ -183,7 +185,7 @@ T = {
 
         "mode": "Выберите способ ввода",
         "m_manual": "Ввести цифры бизнеса вручную",
-        "m_csv": "Загрузить Meta CSV",
+        "m_csv": "Загрузить Meta CSV/XLSX",
         "m_funnel": "Ввести рекламную воронку вручную",
 
         "rev": "Общая выручка ($)",
@@ -193,8 +195,8 @@ T = {
         "refund": "Процент возвратов (%)",
 
         "upload_meta": "Загрузить рекламный отчёт",
-        "upload_csv": "Загрузить CSV",
-        "upload_hint": "Загрузите Meta CSV, чтобы автоматически подтянуть расходы и диалоги. Затем введите средний чек, себестоимость и конверсию.",
+        "upload_csv": "Загрузить CSV/XLSX",
+        "upload_hint": "Загрузите отчёт Meta в формате CSV или XLSX, чтобы автоматически подтянуть расходы и диалоги. Затем введите средний чек, себестоимость и конверсию.",
         "preview": "Превью",
 
         "camp_col": "Колонка с названием кампании",
@@ -227,7 +229,9 @@ T = {
 
         "analyze": "Рассчитать",
 
-        "no_msg_rows": "Не найдено строк, где тип результата содержит 'messaging_conversation_started'.",
+        "no_msg_rows": "В выбранной колонке типа результата не найдено строк, связанных с сообщениями.",
+        "msg_fallback_all": "Строки с сообщениями не найдены. Используются все выбранные строки.",
+        "indicator_values": "Уникальные значения в выбранной колонке типа результата:",
         "conv_zero": "Сумма диалогов = 0. Невозможно продолжить.",
         "warn_orders": "Расчётные заказы меньше 1. Приложение использует Orders = 1, чтобы избежать деления на ноль.",
         "warn_convos": "Диалоги должны быть больше 0 для этого режима.",
@@ -811,6 +815,7 @@ else:
         except Exception as e:
             st.error(f"Could not read the uploaded file. Try exporting again as CSV UTF-8 or XLSX. Error: {e}")
             st.stop()
+
         st.write(t["preview"])
         st.dataframe(df.head(10), use_container_width=True)
 
@@ -843,14 +848,24 @@ else:
             index=guess_index(["Result indicator", "Action type", "Result type", "result_indicator"]),
         )
 
-        msg_mask = df[col_indicator].astype(str).str.contains("messaging_conversation_started", case=False, na=False)
+        indicator_series = df[col_indicator].astype(str).str.lower()
+        unique_indicator_values = sorted(df[col_indicator].dropna().astype(str).unique().tolist())
+
+        msg_mask = (
+            indicator_series.str.contains("messaging", na=False)
+            | indicator_series.str.contains("conversation", na=False)
+            | indicator_series.str.contains("message", na=False)
+        )
+
         df_msg = df[msg_mask].copy()
 
         if df_msg.empty:
-            st.error(t["no_msg_rows"])
-            st.stop()
+            st.warning(t["msg_fallback_all"])
+            st.write(t["indicator_values"])
+            st.dataframe(pd.DataFrame({col_indicator: unique_indicator_values}), use_container_width=True)
+            df_msg = df.copy()
 
-        campaigns = sorted(df_msg[col_campaign].astype(str).unique().tolist())
+        campaigns = sorted(df_msg[col_campaign].dropna().astype(str).unique().tolist())
         selected = st.multiselect(t["select_campaigns"], campaigns, default=campaigns)
 
         df_sel = df_msg[df_msg[col_campaign].astype(str).isin(selected)].copy()
