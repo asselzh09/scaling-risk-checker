@@ -504,6 +504,22 @@ def guess_index_from_patterns(cols, patterns):
     return 0
 
 
+def get_data_quality_note(meta_convos, ad_spend, close_rate, aov):
+    if ad_spend <= 0:
+        return "No ad spend detected." if lang == "English" else "Не обнаружены расходы на рекламу."
+    if meta_convos <= 0:
+        return "No conversations detected from the selected report/columns." if lang == "English" else "В выбранном отчёте и колонках не обнаружены диалоги."
+    if meta_convos < 10:
+        return "Very low conversation volume. Treat results as directional only." if lang == "English" else "Очень мало диалогов. Считайте результат только ориентиром."
+    if close_rate <= 0 or aov <= 0:
+        return "Business assumptions are incomplete. Results are only partial." if lang == "English" else "Бизнес-предпосылки заполнены не полностью. Результаты будут частичными."
+    return None
+
+
+def is_projection_only(meta_convos):
+    return meta_convos < 10
+
+
 def simulate_scale(
     revenue: float,
     cogs: float,
@@ -966,8 +982,18 @@ else:
         st.write(f"{t['convos']}: **{meta_convos:.0f}**")
 
         if meta_convos <= 0:
-            st.error(t["conv_zero"])
+            st.error(
+                "No conversations were detected in the selected rows. Check the Results column and Result type column."
+                if lang == "English"
+                else "В выбранных строках не найдены диалоги. Проверьте колонку Results и колонку типа результата."
+            )
             st.stop()
+        elif meta_convos < 10:
+            st.warning(
+                "Conversation count is very low. Profitability outputs are projections, not proof."
+                if lang == "English"
+                else "Количество диалогов очень маленькое. Оценка прибыльности здесь — это проекция, а не доказанный результат."
+            )
 
         cpa_msg = meta_spend / meta_convos
         st.write(f"{t['cost_per_convo']}: **{format_money(cpa_msg)}**")
@@ -995,6 +1021,19 @@ else:
             "close_rate": close_rate,
             "implied_cac": (cpa_msg / close_rate) if close_rate > 0 else None,
         }
+
+        data_quality_note = get_data_quality_note(meta_convos, meta_spend, close_rate, AOV)
+        projection_only = is_projection_only(meta_convos)
+
+        if data_quality_note:
+            st.warning(data_quality_note)
+
+        if projection_only:
+            st.info(
+                "Low-data mode: there are too few conversations to judge real profitability yet. The output below is a projection based on your assumptions."
+                if lang == "English"
+                else "Режим малых данных: диалогов пока слишком мало, чтобы надёжно судить о реальной прибыльности. Результат ниже — это проекция на основе ваших предположений."
+            )
 
     else:
         st.subheader(t["manual_funnel_header"])
@@ -1098,6 +1137,14 @@ else:
         )
 
         status, status_class = get_status(res)
+
+        if mode == "csv" and "meta_convos" in locals() and meta_convos < 10:
+            status = (
+                "🟡 EARLY DATA — Too little conversion data for a reliable verdict."
+                if lang == "English"
+                else "🟡 РАННИЕ ДАННЫЕ — Слишком мало данных по конверсиям для надёжного вывода."
+            )
+            status_class = "fragile"
 
         AOV = res["AOV"]
         cogs_per_order = res["cogs_per_order"]
