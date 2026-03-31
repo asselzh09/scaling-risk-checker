@@ -383,6 +383,31 @@ def format_money(v):
     return f"${v:,.2f}"
 
 
+def read_uploaded_report(uploaded_file):
+    name = (getattr(uploaded_file, "name", "") or "").lower()
+
+    if name.endswith(".xlsx") or name.endswith(".xls"):
+        uploaded_file.seek(0)
+        return pd.read_excel(uploaded_file)
+
+    for enc in ["utf-8", "utf-8-sig", "utf-16", "latin1", "cp1252"]:
+        try:
+            uploaded_file.seek(0)
+            return pd.read_csv(uploaded_file, encoding=enc)
+        except UnicodeDecodeError:
+            continue
+        except Exception:
+            continue
+
+    uploaded_file.seek(0)
+    return pd.read_csv(
+        uploaded_file,
+        encoding="latin1",
+        engine="python",
+        on_bad_lines="skip",
+    )
+
+
 def simulate_scale(
     revenue: float,
     cogs: float,
@@ -775,13 +800,17 @@ else:
 
     elif mode == "csv":
         st.subheader(t["upload_meta"])
-        uploaded = st.file_uploader(t["upload_csv"], type=["csv"])
+        uploaded = st.file_uploader(t["upload_csv"], type=["csv", "xlsx", "xls"])
 
         if not uploaded:
             st.info(t["upload_hint"])
             st.stop()
 
-        df = pd.read_csv(uploaded)
+        try:
+            df = read_uploaded_report(uploaded)
+        except Exception as e:
+            st.error(f"Could not read the uploaded file. Try exporting again as CSV UTF-8 or XLSX. Error: {e}")
+            st.stop()
         st.write(t["preview"])
         st.dataframe(df.head(10), use_container_width=True)
 
