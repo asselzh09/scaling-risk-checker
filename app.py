@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import io
+import re
 
 st.set_page_config(page_title="Ad Budget Planner", layout="centered")
 
@@ -387,6 +389,39 @@ def format_money(v):
     return f"${v:,.2f}"
 
 
+def parse_number_series(series):
+    def parse_one(value):
+        if pd.isna(value):
+            return None
+
+        s = str(value).strip()
+        if not s:
+            return None
+
+        s = re.sub(r"[^\d,.\-]", "", s)
+        if not s or s in {"-", ".", ",", "-.", "-,"}:
+            return None
+
+        if "," in s and "." in s:
+            if s.rfind(",") > s.rfind("."):
+                s = s.replace(".", "").replace(",", ".")
+            else:
+                s = s.replace(",", "")
+        elif "," in s:
+            whole, frac = s.rsplit(",", 1)
+            if frac.isdigit() and len(frac) in (1, 2):
+                s = whole.replace(".", "") + "." + frac
+            else:
+                s = s.replace(",", "")
+
+        try:
+            return float(s)
+        except ValueError:
+            return None
+
+    return series.apply(parse_one).fillna(0.0)
+
+
 def read_uploaded_report(uploaded_file):
     name = (getattr(uploaded_file, "name", "") or "").lower()
 
@@ -394,22 +429,79 @@ def read_uploaded_report(uploaded_file):
         uploaded_file.seek(0)
         return pd.read_excel(uploaded_file)
 
+    uploaded_file.seek(0)
+    raw_bytes = uploaded_file.getvalue()
+
+    best_df = None
+    best_score = (-1, -1)
+
     for enc in ["utf-8", "utf-8-sig", "utf-16", "latin1", "cp1252"]:
         try:
-            uploaded_file.seek(0)
-            return pd.read_csv(uploaded_file, encoding=enc)
+            text = raw_bytes.decode(enc)
         except UnicodeDecodeError:
             continue
-        except Exception:
-            continue
+
+        for sep in [None, ",", ";", "\t", "|"]:
+            try:
+                df = pd.read_csv(
+                    io.StringIO(text),
+                    encoding=enc,
+                    sep=sep,
+                    engine="python",
+                    on_bad_lines="skip",
+                )
+            except Exception:
+                continue
+
+            df.columns = [str(c).strip().lstrip("\ufeff") for c in df.columns]
+            score = (
+                len(df.columns),
+                sum(not str(c).lower().startswith("unnamed") for c in df.columns),
+            )
+
+            if score > best_score:
+                best_df = df
+                best_score = score
+
+        if best_df is not None and best_score[0] > 1:
+            return best_df
+
+    if best_df is not None:
+        return best_df
 
     uploaded_file.seek(0)
-    return pd.read_csv(
-        uploaded_file,
-        encoding="latin1",
-        engine="python",
-        on_bad_lines="skip",
-    )
+    try:
+        return pd.read_csv(
+            uploaded_file,
+            encoding="latin1",
+            sep=None,
+            engine="python",
+            on_bad_lines="skip",
+        )
+    except Exception:
+        uploaded_file.seek(0)
+        return pd.read_csv(
+            uploaded_file,
+            encoding="latin1",
+            engine="python",
+            on_bad_lines="skip",
+        )
+
+
+def guess_index_from_patterns(cols, patterns):
+    normalized_cols = [re.sub(r"[^a-z0-9]+", " ", str(c).lower()).strip() for c in cols]
+
+    for pattern in patterns:
+        if pattern in cols:
+            return cols.index(pattern)
+
+    for pattern in patterns:
+        pattern_norm = re.sub(r"[^a-z0-9]+", " ", pattern.lower()).strip()
+        for idx, col_norm in enumerate(normalized_cols):
+            if pattern_norm and pattern_norm in col_norm:
+                return idx
+
+    return 0
 
 
 def simulate_scale(
@@ -821,31 +913,25 @@ else:
 
         cols = list(df.columns)
 
-        def guess_index(name_candidates):
-            for c in name_candidates:
-                if c in cols:
-                    return cols.index(c)
-            return 0
-
         col_campaign = st.selectbox(
             t["camp_col"],
             cols,
-            index=guess_index(["Campaign name", "Campaign", "campaign_name"]),
+            index=guess_index_from_patterns(cols, ["Campaign name", "Campaign", "campaign_name"]),
         )
         col_spend = st.selectbox(
             t["spend_col"],
             cols,
-            index=guess_index(["Amount spent (MYR)", "Amount spent", "Spend", "Amount spent (USD)"]),
+            index=guess_index_from_patterns(cols, ["Amount spent (MYR)", "Amount spent", "Spend", "Amount spent (USD)"]),
         )
         col_results = st.selectbox(
             t["results_col"],
             cols,
-            index=guess_index(["Results", "Result", "results"]),
+            index=guess_index_from_patterns(cols, ["Results", "Result", "results"]),
         )
         col_indicator = st.selectbox(
             t["indicator_col"],
             cols,
-            index=guess_index(["Result indicator", "Action type", "Result type", "result_indicator"]),
+            index=guess_index_from_patterns(cols, ["Result indicator", "Action type", "Result type", "result_indicator"]),
         )
 
         indicator_series = df[col_indicator].astype(str).str.lower()
@@ -869,8 +955,8 @@ else:
         selected = st.multiselect(t["select_campaigns"], campaigns, default=campaigns)
 
         df_sel = df_msg[df_msg[col_campaign].astype(str).isin(selected)].copy()
-        df_sel[col_spend] = pd.to_numeric(df_sel[col_spend], errors="coerce").fillna(0.0)
-        df_sel[col_results] = pd.to_numeric(df_sel[col_results], errors="coerce").fillna(0.0)
+        df_sel[col_spend] = parse_number_series(df_sel[col_spend])
+        df_sel[col_results] = parse_number_series(df_sel[col_results])
 
         meta_spend = float(df_sel[col_spend].sum())
         meta_convos = float(df_sel[col_results].sum())
