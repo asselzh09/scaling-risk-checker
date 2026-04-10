@@ -23,18 +23,18 @@ T = {
 
         "mode": "Choose input mode",
         "m_manual": "Enter business numbers manually",
-        "m_csv": "Upload Meta CSV/XLSX",
+        "m_csv": "Upload ad report (CSV / XLSX)",
         "m_funnel": "Enter ad funnel manually",
 
-        "rev": "Total revenue ($)",
-        "cogs": "Total product cost / COGS ($)",
-        "spend": "Current ad spend ($)",
+        "rev": "Total revenue",
+        "cogs": "Total product cost",
+        "spend": "Current ad spend",
         "orders": "Orders",
-        "refund": "Refund rate (%)",
+        "refund": "Return rate (%)",
 
         "upload_meta": "Upload ad report",
-        "upload_csv": "Upload CSV/XLSX",
-        "upload_hint": "Upload a Meta CSV or XLSX report to auto-fill ad spend and conversations. Then enter average order value, product cost, and conversion rate.",
+        "upload_csv": "Upload CSV / XLSX",
+        "upload_hint": "Upload an ad report to auto-fill spend and conversations. Then enter average order value, product cost, and conversion rate.",
         "preview": "Preview",
 
         "camp_col": "Campaign name column",
@@ -43,143 +43,143 @@ T = {
         "indicator_col": "Result type column",
         "select_campaigns": "Select campaigns to include",
 
-        "derived": "### Derived from CSV",
+        "derived": "### Detected from file",
         "bridge": "Connect ad report to business numbers",
 
-        "close_rate": "Conversation to order rate",
-        "aov": "Average order value ($)",
-        "cogs_po": "Product cost per order ($)",
+        "close_rate": "Conversation-to-order rate",
+        "aov": "Average order value",
+        "cogs_po": "Product cost per order",
 
-        "manual_funnel_header": "Manual ad funnel inputs",
-        "spend_f": "Ad spend ($)",
-        "convos": "Messaging conversations",
+        "manual_funnel_header": "Enter ad funnel data manually",
+        "spend_f": "Ad spend",
+        "convos": "Conversations",
         "clicks": "Clicks (optional)",
         "impr": "Impressions (optional)",
 
         "scale_header": "Scenario settings",
-        "preset_label": "How does ad efficiency usually behave when you scale?",
+        "preset_label": "How does ad efficiency usually change when you scale?",
         "preset_opt": "Optimistic",
         "preset_real": "Realistic",
         "preset_bad": "Pessimistic",
-        "scale_inc": "Planned ad spend change (%)",
-        "scale_decay": "If you double ad spend, how much can CAC increase (%)?",
-        "note": "Example: if current CAC is $20 and this setting is 25%, then after doubling spend the model assumes CAC may rise to about $25.",
+        "scale_inc": "Planned budget change (%)",
+        "scale_decay": "If you double spend, how much can customer acquisition cost rise (%)?",
+        "note": "Example: if acquiring a customer currently costs 20 and this is set to 25%, the model assumes that cost may rise to around 25 when you double your budget.",
 
-        "analyze": "Analyze",
+        "analyze": "Calculate",
 
-        "no_msg_rows": "No messaging-specific rows were found in the selected result type column.",
-        "msg_fallback_all": "No messaging-specific rows found. Using all selected rows instead.",
-        "indicator_values": "Unique values from the selected result type column:",
-        "conv_zero": "Conversations sum to 0. Can't continue.",
-        "warn_orders": "Estimated orders are below 1. The app will use Orders = 1 to avoid division by zero.",
-        "warn_convos": "Conversations must be greater than 0 to use this mode.",
+        "no_msg_rows": "No messaging rows found in the selected result type column.",
+        "msg_fallback_all": "No messaging rows found. Using all selected rows instead.",
+        "indicator_values": "Unique values in the selected result type column:",
+        "conv_zero": "Conversations total is 0. Cannot continue.",
+        "warn_orders": "Estimated orders are below 1. Using 1 order to avoid division by zero.",
+        "warn_convos": "Conversations must be greater than 0 for this mode.",
 
-        "status_hold": "🔴 HOLD — Current economics are weak or scaling leads to loss.",
-        "status_fragile": "🟠 FRAGILE — Small CAC deterioration can break profitability.",
-        "status_safe": "🟢 CONTROLLED — Unit economics can handle some growth.",
+        "status_hold": "🔴 STOP — Economics are weak or scaling leads to a loss.",
+        "status_fragile": "🟠 CAUTION — A small drop in efficiency can break profitability.",
+        "status_safe": "🟢 OK — Economics can handle some growth.",
 
-        "bottleneck_neg": "Your unit economics are negative even before ads.",
-        "bottleneck_cac": "Customer acquisition cost is your main growth risk.",
-        "bottleneck_ref": "Refunds are reducing profitability.",
-        "bottleneck_margin": "Low margin limits safe scaling.",
+        "bottleneck_neg": "Economics are negative even before ad spend.",
+        "bottleneck_cac": "Main risk: customer acquisition cost is too high.",
+        "bottleneck_ref": "Returns are eating into profit.",
+        "bottleneck_margin": "Low margin limits safe growth.",
         "bottleneck_ok": "No major structural problem detected.",
 
-        "risk_hdr": "Risk meter",
-        "baseline_hdr": "Current business snapshot",
-        "unit_hdr": "Unit economics",
-        "safe_cac_hdr": "Safe CAC",
+        "risk_hdr": "Risk level",
+        "baseline_hdr": "Current situation",
+        "unit_hdr": "Order economics",
+        "safe_cac_hdr": "Safe customer acquisition cost",
         "max_budget_hdr": "Maximum safe ad budget",
-        "real_analysis_hdr": "Real business analysis",
-        "ads_effect_hdr": "Are ads helping or hurting?",
-        "next_move_hdr": "Best next move",
-        "main_constraint": "Main constraint",
+        "real_analysis_hdr": "Current numbers breakdown",
+        "ads_effect_hdr": "Are ads helping or hurting right now?",
+        "next_move_hdr": "What to do next",
+        "main_constraint": "Main problem",
         "rec_hdr": "Recommendation",
-        "main_insight_hdr": "Main insight",
+        "main_insight_hdr": "Main takeaway",
         "sim_hdr": "Selected scenario result",
-        "safe_hdr": "Safe scaling limit",
-        "safe_line": "Maximum safe ad spend increase before profit turns negative",
-        "low_ceiling": "Low ceiling: aggressive scaling may quickly become unprofitable unless you improve margin, refunds, or CAC.",
+        "safe_hdr": "Safe budget increase limit",
+        "safe_line": "How much you can increase budget before profit turns negative",
+        "low_ceiling": "Small buffer: aggressive budget increases may quickly push you into a loss.",
         "table_hdr": "Scenario table",
 
-        "chart_hdr": "Profit sensitivity curve",
-        "chart_note": "This shows where reducing or increasing ad spend improves profit and where it starts hurting profit.",
+        "chart_hdr": "How profit changes with budget",
+        "chart_note": "Shows where changing the budget helps profit and where it starts to hurt.",
         "current_point": "Current point",
-        "peak_point": "Peak profit point",
+        "peak_point": "Best profit point",
         "breakeven_point": "Loss point",
-        "peak_profit": "Peak profit",
-        "peak_spend": "Best ad spend",
-        "profit_cliff": "Profit cliff detected: beyond the peak, more spend reduces total profit.",
+        "peak_profit": "Best profit",
+        "peak_spend": "Best ad budget",
+        "profit_cliff": "Beyond a certain point, further budget increases reduce total profit.",
 
-        "safe_cac": "Safe CAC",
-        "current_cac": "Current CAC",
-        "margin_buffer": "Margin buffer",
+        "safe_cac": "Safe acquisition cost",
+        "current_cac": "Current acquisition cost",
+        "margin_buffer": "Profit buffer per order",
 
-        "current_ad_spend": "Current ad spend",
-        "max_safe_spend": "Maximum safe spend",
-        "loss_point_spend": "Spend where profit turns negative",
+        "current_ad_spend": "Current ad budget",
+        "max_safe_spend": "Maximum safe budget",
+        "loss_point_spend": "Budget where profit turns negative",
         "profit_before_ads": "Profit before ads",
         "profit_after_ads": "Profit after ads",
-        "ad_impact": "Ad cost impact",
+        "ad_impact": "Ad impact on profit",
 
-        "forecast_spend": "Forecast spend",
-        "forecast_cac": "Forecast CAC",
-        "forecast_orders": "Forecast orders",
-        "forecast_revenue": "Forecast revenue",
-        "forecast_profit": "Forecast profit",
+        "forecast_spend": "Projected spend",
+        "forecast_cac": "Projected acquisition cost",
+        "forecast_orders": "Projected orders",
+        "forecast_revenue": "Projected revenue",
+        "forecast_profit": "Projected profit",
 
-        "spend_increase_col": "Spend change %",
+        "spend_increase_col": "Budget change %",
         "status_col": "Status",
 
-        "newbiz_header": "New business planning",
-        "planned_budget": "Planned ad budget ($)",
-        "expected_cac": "Expected cost to get one customer ($)",
-        "target_profit": "Target profit ($, optional)",
+        "newbiz_header": "New business plan",
+        "planned_budget": "Planned ad budget",
+        "expected_cac": "Expected cost to acquire one customer",
+        "target_profit": "Target profit (optional)",
         "expected_orders": "Expected customers",
         "expected_revenue": "Expected revenue",
         "expected_profit": "Expected profit",
         "rec_budget": "Suggested test budget",
-        "newbiz_result": "New business estimate",
-        "newbiz_note": "Use this mode if you are planning your first ad budget and do not have real campaign data yet.",
+        "newbiz_result": "Preliminary estimate for new business",
+        "newbiz_note": "Use this mode if you are planning your first ad campaign and have no real data yet.",
 
         "example_btn": "Load example data",
 
-        "reco_neg": "Your unit economics are negative before ads. Rework price, product cost, or refund rate first.",
-        "reco_refund": "Refund rate is too high. Scaling ads now will amplify losses. Fix product quality, customer expectations, or support first.",
-        "reco_margin": "Your margins are thin. Improve AOV or reduce product cost before pushing more spend.",
-        "reco_cac_close": "Your current CAC is already too close to break-even. Scale carefully or improve conversion first.",
-        "reco_good": "Healthy margin buffer. You still have room before CAC reaches break-even.",
-        "reco_mid": "Economics look workable, but monitor CAC deterioration closely as you scale.",
+        "reco_neg": "Economics are negative before ads. Fix pricing, product cost, or return rate first.",
+        "reco_refund": "Return rate is too high. Scaling ads now will amplify losses. Fix product quality or customer expectations first.",
+        "reco_margin": "Profit per order is too thin. Raise average order value or reduce product cost before increasing budget.",
+        "reco_cac_close": "Acquisition cost is already too close to the break-even limit. Grow carefully or improve conversion first.",
+        "reco_good": "Good profit buffer. You still have room before hitting the acquisition cost limit.",
+        "reco_mid": "Numbers look workable, but watch whether acquisition cost rises as you scale.",
 
-        "insight_drop_pct": "If ad spend changes by {pct}%, profit may fall by {value}.",
-        "insight_grow_pct": "If ad spend changes by {pct}%, profit may improve by {value}.",
-        "insight_safe_limit": "Your business can safely increase ad spend by up to {pct}% before profit turns negative.",
-        "insight_cac_ratio": "Your current CAC is already {pct}% of safe CAC.",
+        "insight_drop_pct": "If budget changes by {pct}%, profit may fall by {value}.",
+        "insight_grow_pct": "If budget changes by {pct}%, profit may improve by {value}.",
+        "insight_safe_limit": "You can safely increase budget by up to {pct}% before profit turns negative.",
+        "insight_cac_ratio": "Current acquisition cost is already {pct}% of the safe level.",
 
-        "meta_diag": "Ad diagnostics (optional)",
+        "meta_diag": "Additional ad metrics (optional)",
         "cost_per_convo": "Cost per conversation",
-        "conv_to_order": "Conversation to order rate",
-        "estimated_cac": "Estimated CAC",
-        "ctr": "Доля кликов",
-        "cpc": "Стоимость клика",
-        "click_to_convo": "Click to conversation rate",
+        "conv_to_order": "Conversation-to-order rate",
+        "estimated_cac": "Estimated acquisition cost",
+        "ctr": "Click-through rate",
+        "cpc": "Cost per click",
+        "click_to_convo": "Click-to-conversation rate",
 
-        "ads_destroying": "Ads are currently destroying profitability.",
-        "ads_ok": "Ads are still profitable at the current spend level.",
-        "ads_weak": "Ads are still profitable, but efficiency is getting weak.",
-        "ads_not_problem": "The core business economics are the main issue, not ad scaling.",
-        "reduce_spend": "Reduce ad spend",
-        "hold_spend": "Hold current spend",
-        "scale_gradually": "Scale gradually",
-        "fix_conversion": "Improve conversion before scaling",
-        "fix_refunds": "Fix refund problem first",
-        "fix_margin": "Improve margin first",
-        "overspending_now": "Current spend appears above the profit peak.",
-        "reducing_can_help": "Reducing ad spend may improve profit.",
-        "current_close_to_peak": "Current spend is already close to the most profitable zone.",
-        "still_room_to_scale": "There is still room to scale before profit peaks.",
+        "ads_destroying": "Ads are currently pushing the business into a loss.",
+        "ads_ok": "Ads are still profitable at the current budget level.",
+        "ads_weak": "Ads are still profitable, but efficiency is weakening.",
+        "ads_not_problem": "The main problem is the core business economics, not the ad budget.",
+        "reduce_spend": "Reduce ad budget",
+        "hold_spend": "Keep current budget",
+        "scale_gradually": "Increase budget gradually",
+        "fix_conversion": "Improve conversion first",
+        "fix_refunds": "Fix returns problem first",
+        "fix_margin": "Improve profit per order first",
+        "overspending_now": "Current budget appears to be above the peak profit point.",
+        "reducing_can_help": "Reducing budget may improve profit.",
+        "current_close_to_peak": "Current budget is already close to the most profitable zone.",
+        "still_room_to_scale": "There is still room to grow before reaching peak profit.",
     },
     "Русский": {
-        "title": "Ad Budget Planner",
+        "title": "Планировщик рекламного бюджета",
         "subtitle": "Помогает понять, не слишком ли много вы тратите на рекламу и можно ли безопасно увеличить бюджет.",
 
         "biz_stage": "Выберите вашу ситуацию",
@@ -191,16 +191,16 @@ T = {
         "m_csv": "Загрузить рекламный отчёт",
         "m_funnel": "Ввести рекламную воронку вручную",
 
-        "rev": "Общая выручка ($)",
-        "cogs": "Общая себестоимость / COGS ($)",
-        "spend": "Текущий расход на рекламу ($)",
+        "rev": "Общая выручка",
+        "cogs": "Общая себестоимость",
+        "spend": "Текущий расход на рекламу",
         "orders": "Заказы",
         "refund": "Процент возвратов (%)",
 
         "upload_meta": "Загрузить рекламный отчёт",
         "upload_csv": "Загрузить файл отчёта",
         "upload_hint": "Загрузите рекламный отчёт, чтобы автоматически подтянуть расходы и количество обращений. Затем введите средний чек, себестоимость и конверсию в покупку.",
-        "preview": "Превью",
+        "preview": "Предпросмотр",
 
         "camp_col": "Колонка с названием кампании",
         "spend_col": "Колонка с расходом на рекламу",
@@ -212,14 +212,14 @@ T = {
         "bridge": "Свяжите рекламный отчёт с бизнес-цифрами",
 
         "close_rate": "Конверсия в покупку",
-        "aov": "Средний чек ($)",
-        "cogs_po": "Себестоимость одного заказа ($)",
+        "aov": "Средний чек",
+        "cogs_po": "Себестоимость одного заказа",
 
         "manual_funnel_header": "Ручной ввод данных по рекламе",
-        "spend_f": "Расход на рекламу ($)",
-        "convos": "Диалоги",
-        "clicks": "Клики (опционально)",
-        "impr": "Показы (опционально)",
+        "spend_f": "Расход на рекламу",
+        "convos": "Обращения",
+        "clicks": "Клики (необязательно)",
+        "impr": "Показы (необязательно)",
 
         "scale_header": "Настройки расчёта",
         "preset_label": "Как обычно ведёт себя реклама, когда вы увеличиваете бюджет?",
@@ -232,11 +232,11 @@ T = {
 
         "analyze": "Рассчитать",
 
-        "no_msg_rows": "В выбранной колонке типа результата не найдено строк, связанных с сообщениями.",
+        "no_msg_rows": "В выбранной колонке не найдено строк, связанных с сообщениями.",
         "msg_fallback_all": "Строки с сообщениями не найдены. Используются все выбранные строки.",
-        "indicator_values": "Уникальные значения в выбранной колонке типа результата:",
+        "indicator_values": "Уникальные значения в выбранной колонке:",
         "conv_zero": "Количество обращений = 0. Невозможно продолжить расчёт.",
-        "warn_orders": "Расчётные заказы меньше 1. Приложение использует Orders = 1, чтобы избежать деления на ноль.",
+        "warn_orders": "Расчётные заказы меньше 1. Используется 1 заказ, чтобы избежать деления на ноль.",
         "warn_convos": "Количество обращений должно быть больше 0 для этого режима.",
 
         "status_hold": "🔴 СТОП — Сейчас экономика слабая или рост бюджета ведёт к убытку.",
@@ -302,26 +302,26 @@ T = {
         "expected_orders": "Ожидаемое число клиентов",
         "expected_revenue": "Ожидаемая выручка",
         "expected_profit": "Ожидаемая прибыль",
-        "rec_budget": "Рекомендуемый бюджет на тест",
+        "rec_budget": "Рекомендуемый бюджет на проверку",
         "newbiz_result": "Предварительный расчёт для нового бизнеса",
         "newbiz_note": "Используйте этот режим, если вы только планируете первый запуск рекламы и у вас ещё нет реальных цифр.",
 
         "example_btn": "Подставить пример",
 
-        "reco_neg": "Экономика отрицательная ещё до рекламы. Сначала пересоберите цену, себестоимость или уровень возвратов.",
-        "reco_refund": "Процент возвратов слишком высокий. Масштабирование рекламы усилит убытки. Сначала исправьте качество продукта, ожидания клиента или поддержку.",
+        "reco_neg": "Экономика отрицательная ещё до рекламы. Сначала пересмотрите цену, себестоимость или уровень возвратов.",
+        "reco_refund": "Процент возвратов слишком высокий. Рост рекламы усилит убытки. Сначала исправьте качество продукта или ожидания клиентов.",
         "reco_margin": "Прибыль с заказа слишком маленькая. Лучше повысить средний чек или снизить себестоимость перед ростом бюджета.",
         "reco_cac_close": "Стоимость клиента уже слишком близка к опасной границе. Лучше расти осторожно или сначала улучшить продажи.",
-        "reco_good": "Хороший запас маржи. У вас ещё есть пространство до точки безубыточности по стоимости привлечения клиента.",
+        "reco_good": "Хороший запас прибыли. У вас ещё есть пространство до точки безубыточности.",
         "reco_mid": "Цифры пока выглядят рабочими, но при росте бюджета следите, не дорожает ли клиент.",
 
         "insight_drop_pct": "Если изменить рекламный бюджет на {pct}%, прибыль может снизиться на {value}.",
         "insight_grow_pct": "Если изменить рекламный бюджет на {pct}%, прибыль может вырасти на {value}.",
-        "insight_safe_limit": "Ваш бизнес может безопасно увеличить рекламный бюджет максимум на {pct}%, прежде чем прибыль станет отрицательной.",
+        "insight_safe_limit": "Бюджет можно безопасно увеличить максимум на {pct}%, прежде чем прибыль уйдёт в минус.",
         "insight_cac_ratio": "Текущая стоимость клиента уже составляет {pct}% от безопасного уровня.",
 
-        "meta_diag": "Дополнительные показатели рекламы",
-        "cost_per_convo": "Стоимость диалога",
+        "meta_diag": "Дополнительные показатели рекламы (необязательно)",
+        "cost_per_convo": "Стоимость обращения",
         "conv_to_order": "Конверсия в покупку",
         "estimated_cac": "Расчётная стоимость клиента",
         "ctr": "Доля кликов",
@@ -352,29 +352,108 @@ t = T[lang]
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Page header ── */
+    h1 {
+        font-size: 1.75rem !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.3px;
+    }
+    h2 { font-size: 1.15rem !important; font-weight: 600 !important; }
+    h3 { font-size: 1rem !important; font-weight: 600 !important; }
+
+    /* ── Status badge ── */
     .big-status {
-        font-size: 22px;
+        font-size: 1rem;
         font-weight: 700;
-        padding: 14px 18px;
-        border-radius: 10px;
-        margin-top: 8px;
-        margin-bottom: 12px;
-        border-left: 5px solid;
+        padding: 13px 18px;
+        border-radius: 8px;
+        margin: 10px 0 16px 0;
+        border-left: 4px solid;
+        letter-spacing: 0.2px;
     }
-    .safe  { border-color: #2e9e5b; color: #2e9e5b; background: rgba(46,158,91,0.10); }
-    .fragile { border-color: #d4882a; color: #d4882a; background: rgba(212,136,42,0.10); }
-    .hold  { border-color: #d44242; color: #d44242; background: rgba(212,66,66,0.10); }
-    .small-note { opacity: 0.6; font-size: 13px; }
+    .safe    { border-color: #22c55e; color: #16a34a; background: rgba(34,197,94,0.08); }
+    .fragile { border-color: #f59e0b; color: #b45309; background: rgba(245,158,11,0.08); }
+    .hold    { border-color: #ef4444; color: #dc2626; background: rgba(239,68,68,0.08); }
+
+    /* ── Metric cards ── */
     div[data-testid="stMetric"] {
-        border: 1px solid rgba(128,128,128,0.2);
-        padding: 10px 12px;
+        border: 1px solid rgba(148,163,184,0.18);
+        background: rgba(248,250,252,0.6);
+        padding: 12px 14px;
         border-radius: 10px;
+        transition: border-color 0.15s;
     }
-    /* Progress tab hint */
-    .tab-hint {
-        font-size: 13px;
+    div[data-testid="stMetric"]:hover {
+        border-color: rgba(99,102,241,0.35);
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.72rem !important;
+        font-weight: 500 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         opacity: 0.55;
-        margin-bottom: 6px;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+    }
+
+    /* ── Tabs ── */
+    div[data-testid="stTabs"] button {
+        font-weight: 500;
+        font-size: 0.85rem;
+        letter-spacing: 0.1px;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        font-weight: 700;
+    }
+
+    /* ── Section dividers ── */
+    hr { opacity: 0.12 !important; }
+
+    /* ── Captions / hints ── */
+    .small-note,
+    div[data-testid="stCaptionContainer"] {
+        font-size: 0.78rem !important;
+        opacity: 0.5;
+    }
+
+    /* ── Sidebar ── */
+    section[data-testid="stSidebar"] {
+        background: rgba(248,250,252,0.9);
+    }
+    section[data-testid="stSidebar"] h3 {
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        opacity: 0.5;
+        margin-bottom: 8px;
+    }
+
+    /* ── Info / warning / success boxes ── */
+    div[data-testid="stAlert"] {
+        border-radius: 8px !important;
+        font-size: 0.88rem !important;
+    }
+
+    /* ── Number inputs ── */
+    div[data-testid="stNumberInput"] input {
+        border-radius: 7px !important;
+        font-size: 0.92rem !important;
+    }
+
+    /* ── Buttons ── */
+    div[data-testid="stButton"] button {
+        border-radius: 7px !important;
+        font-weight: 600 !important;
+        font-size: 0.88rem !important;
     }
     </style>
     """,
@@ -382,7 +461,7 @@ st.markdown(
 )
 
 st.title(t["title"])
-st.write(t["subtitle"])
+st.caption(t["subtitle"])
 
 
 # =========================
@@ -596,7 +675,7 @@ def simulate_scale(
     new_risk_ratio = safe_div(new_cac, break_even_cac) if break_even_cac > 0 else 999.0
 
     return {
-        "AOV": aov,
+        "Средний чек": aov,
         "cogs_per_order": cogs_per_order,
         "cac": cac,
         "break_even_cac": break_even_cac,
@@ -641,7 +720,7 @@ def get_bottleneck(aov, cogs_per_order, cac, break_even_cac, refund_rate):
 
 
 def get_recommendation(res, refund_rate):
-    aov = res["AOV"]
+    aov = res["Средний чек"]
     cogs_per_order = res["cogs_per_order"]
     cac = res["cac"]
     break_even_cac = res["break_even_cac"]
@@ -817,7 +896,7 @@ def get_ads_verdict(res):
 
 
 def get_best_next_move(res, refund_rate, peak_spend, current_spend):
-    aov = res["AOV"]
+    aov = res["Средний чек"]
     cogs_per_order = res["cogs_per_order"]
 
     if refund_rate >= 15:
@@ -841,7 +920,7 @@ def tr(en, ru):
 
 def classify_mode_v2(source_key, used_conversations, real_orders, threshold, close_rate_confidence, close_rate_source, has_economics, true_spend):
     if source_key == "новый_бизнес_assumptions_only":
-        return "new_business"
+        return "новый_бизнес"
     # Require close_rate_source to be real_data or past_campaigns (not guess),
     # and close_rate_confidence to not be low. This aligns with get_confidence_v2's
     # high-confidence gate so the badge and the confidence label never contradict each other.
@@ -853,8 +932,8 @@ def classify_mode_v2(source_key, used_conversations, real_orders, threshold, clo
         and true_spend > 0
         and close_rate_ok
     ):
-        return "validated"
-    return "early_test"
+        return "данных_достаточно"
+    return "ранний_тест"
 
 
 def is_low_confidence_v2(source_key, mode_key, real_orders, close_rate_source, used_conversations, threshold):
@@ -883,7 +962,7 @@ def get_confidence_v2(source_key, used_conversations, real_orders, threshold, cl
     if spend_is_adjusted:
         reasons.append(tr("spend adjusted manually", "расход скорректирован вручную"))
     if lead_quality == "weak":
-        reasons.append(tr("качество обращений слабое", "качество обращений слабое"))
+        reasons.append(tr("lead quality is weak", "качество обращений слабое"))
 
     if source_key == "новый_бизнес_assumptions_only":
         return tr("Low", "Низкая"), reasons
@@ -924,7 +1003,7 @@ def get_recommendation_v2(
             tr("Use this as a validation plan, not a profit promise.", "Используйте это как план проверки, а не как обещание прибыли."),
             tr(f"Target CAC: {format_money(max(target_cac, 0.0))}", f"Целевая стоимость привлечения клиента: {format_money(max(target_cac, 0.0))}"),
             tr(
-                f"Бюджет на тест for {int(target_conversations)} conversations: {format_money(recommended_test_budget)}",
+                f"Validation budget for {int(target_conversations)} conversations: {format_money(recommended_test_budget)}",
                 f"Бюджет на проверку для {int(target_conversations)} обращений: {format_money(recommended_test_budget)}",
             ),
         ]
@@ -971,7 +1050,7 @@ def get_recommendation_v2(
 
     if refund_count > 0:
         return tr("Fix refunds first", "Сначала разберитесь с возвратами"), [
-            tr("Refund leakage is reducing how much CAC the business can safely afford.", "Возвраты уменьшают CAC, который бизнес может безопасно выдерживать."),
+            tr("Refund leakage is reducing how much CAC the business can safely afford.", "Возвраты уменьшают ту стоимость клиента, которую бизнес может выдержать без убытка."),
         ]
     if lead_quality == "weak":
         return tr("Improve lead quality", "Улучшите качество обращений"), [
@@ -1024,14 +1103,14 @@ industry_options = [
     ("ecommerce", tr("E-commerce", "E-commerce")),
     ("services", tr("Services", "Услуги")),
     ("education", tr("Education", "Образование")),
-    ("health_beauty", tr("Здоровье / красота", "Здоровье / красота")),
+    ("health_beauty", tr("Health / beauty", "Здоровье / красота")),
     ("b2b", tr("B2B", "B2B")),
     ("other", tr("Other", "Другое")),
 ]
 sales_channel_options = [
-    ("website", tr("Оплата на сайте", "Покупка на сайте")),
-    ("messaging", tr("WhatsApp / Telegram / личные сообщения", "WhatsApp / Telegram / личные сообщения")),
-    ("consultation", tr("Звонок / консультация", "Звонок / консультация")),
+    ("website", tr("Website checkout", "Покупка на сайте")),
+    ("messaging", tr("WhatsApp / Telegram / DM", "WhatsApp / Telegram / личные сообщения")),
+    ("consultation", tr("Call / consultation", "Звонок / консультация")),
     ("mixed", tr("Mixed", "Несколько способов")),
 ]
 sales_cycle_options = [
@@ -1044,7 +1123,7 @@ sales_cycle_options = [
 ctx1, ctx2, ctx3 = st.columns(3)
 with ctx1:
     industry = st.selectbox(
-        tr("Сфера бизнеса", "Сфера бизнеса"),
+        tr("Industry", "Сфера бизнеса"),
         options=[key for key, _ in industry_options],
         format_func=dict(industry_options).get,
     )
@@ -1139,15 +1218,15 @@ if source_key == "новый_бизнес_assumptions_only":
 
     nb1, nb2, nb3 = st.columns(3)
     with nb1:
-        aov = st.number_input(money_label(tr("Средний чек", "Средний чек")), min_value=0.0, value=120.0)
-        cogs_per_order = st.number_input(money_label(tr("Себестоимость одного заказа", "Себестоимость одного заказа")), min_value=0.0, value=45.0)
+        aov = st.number_input(money_label(tr("Average order value", "Средний чек")), min_value=0.0, value=120.0)
+        cogs_per_order = st.number_input(money_label(tr("Product cost per order", "Себестоимость одного заказа")), min_value=0.0, value=45.0)
         refund_rate_pct = st.number_input(tr("Refund rate (%)", "Процент возвратов (%)"), min_value=0.0, max_value=100.0, value=5.0)
     with nb2:
         close_rate = st.number_input(tr("Expected close rate from conversation to order", "Ожидаемая конверсия в покупку"), min_value=0.0, max_value=1.0, value=0.2)
-        expected_cost_per_conversation = st.number_input(money_label(tr("Ожидаемая стоимость обращения", "Ожидаемая стоимость обращения")), min_value=0.0, value=3.5)
-        expected_cac_input = st.number_input(money_label(tr("Ожидаемая стоимость привлечения клиента (необязательно)", "Ожидаемая стоимость привлечения клиента (необязательно)")), min_value=0.0, value=0.0)
+        expected_cost_per_conversation = st.number_input(money_label(tr("Expected cost per conversation", "Ожидаемая стоимость обращения")), min_value=0.0, value=3.5)
+        expected_cac_input = st.number_input(money_label(tr("Expected customer acquisition cost (optional)", "Ожидаемая стоимость привлечения клиента (необязательно)")), min_value=0.0, value=0.0)
     with nb3:
-        desired_profit_per_order = st.number_input(money_label(tr("Желаемая прибыль с заказа", "Желаемая прибыль с заказа")), min_value=0.0, value=10.0)
+        desired_profit_per_order = st.number_input(money_label(tr("Target profit per order", "Желаемая прибыль с заказа")), min_value=0.0, value=10.0)
         assumption_source = st.selectbox(
             tr("Assumption source", "Откуда взяты предположения"),
             options=["guess", "benchmark", "experience"],
@@ -1174,7 +1253,7 @@ if source_key == "новый_бизнес_assumptions_only":
     repeat_purchase_value = 0.0
     if repeat_purchase_default == "yes":
         repeat_purchase_value = st.number_input(
-            tr("Expected repeat value / LTV uplift ($)", "Ожидаемая повторная выручка"),
+            tr("Expected repeat value", "Ожидаемая повторная выручка"),
             min_value=0.0,
             value=0.0,
         )
@@ -1226,7 +1305,7 @@ if source_key == "новый_бизнес_assumptions_only":
 
     st.divider()
     st.subheader(tr("Decision", "Решение"))
-    st.markdown(f'<div class="big-status fragile">{tr("Предварительный расчёт на основе предположений", "Сценарий на основе предположений")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-status fragile">{tr("Assumption-based plan", "Сценарий на основе предположений")}</div>', unsafe_allow_html=True)
 
     st.warning(
         tr(
@@ -1241,7 +1320,7 @@ if source_key == "новый_бизнес_assumptions_only":
     b3.metric(tr("Max cost per conversation", "Максимальная стоимость обращения"), format_money(max_cost_per_conversation))
 
     b4 = st.columns(1)[0]
-    b4.metric(tr("Бюджет на тест", "Бюджет на валидацию"), format_money(recommended_test_budget))
+    b4.metric(tr("Validation budget", "Бюджет на валидацию"), format_money(recommended_test_budget))
 
     with st.expander(tr("Illustrative scenario only", "Примерный расчёт"), expanded=False):
         st.write(f"**{tr('If assumptions hold', 'Если предположения верны')}:**")
@@ -1260,7 +1339,7 @@ if source_key == "новый_бизнес_assumptions_only":
         st.write(f"- {point}")
 
     st.subheader(tr("Key answers", "Ключевые ответы"))
-    st.write(f"1. {tr('Can this business support ads in theory?', 'Может ли бизнес в теории выдержать рекламу?')} {tr('Yes, if CAC stays at or below', 'Да, если стоимость клиента держится на уровне или ниже')} **{format_money(max(target_cac, 0.0))}**.")
+    st.write(f"1. {tr('Can this business support ads in theory?', 'Может ли эта экономика выдержать рекламу?')} {tr('Yes, if CAC stays at or below', 'Да, если стоимость клиента держится на уровне или ниже')} **{format_money(max(target_cac, 0.0))}**.")
     st.write(f"2. {tr('Is the current data enough to judge?', 'Достаточно ли данных для вывода?')} {tr('No, this is still an assumption-based plan.', 'Нет, это пока сценарий на предположениях.')}")
     st.write(f"3. {tr('How much should be spent next to get evidence?', 'Сколько потратить дальше, чтобы получить доказательства?')} **{format_money(recommended_test_budget)}**.")
     st.write(f"4. {tr('Should we scale?', 'Стоит ли увеличивать бюджет?')} {tr('Not yet. Validate the assumptions first.', 'Пока нет. Сначала проверьте предположения на практике.')}")
@@ -1350,7 +1429,7 @@ else:
                     s1.metric(tr("Reported spend", "Расход по отчёту"), format_money(reported_spend))
                     s2.metric(tr("Reported results", "Результаты по отчёту"), f"{reported_results:.1f}")
                     s3.metric(tr("Campaigns found", "Найдено кампаний"), detected_campaigns)
-                    s4.metric(tr("Cost per reported result", "Стоимость reported result"), format_money(cost_per_reported_result))
+                    s4.metric(tr("Cost per reported result", "Стоимость результата по отчёту"), format_money(cost_per_reported_result))
 
                     st.write(f"**{tr('Detected result type sample', 'Пример найденных типов результата')}:** {reported_result_type}")
                     st.write(tr("Unique indicator values", "Уникальные значения индикатора"))
@@ -1362,9 +1441,9 @@ else:
             st.caption(tr("Manual path for current campaign data.", "Ручной путь для данных текущей кампании."))
             m1, m2, m3 = st.columns(3)
             with m1:
-                reported_spend = st.number_input(tr("Reported ad spend ($)", "Расход по отчёту ($)"), min_value=0.0, value=0.0)
+                reported_spend = st.number_input(tr("Reported ad spend", "Расход по отчёту ($)"), min_value=0.0, value=0.0)
             with m2:
-                reported_results = st.number_input(tr("Meta-reported conversations", "Диалоги по данным Meta"), min_value=0.0, value=0.0)
+                reported_results = st.number_input(tr("Meta-reported conversations", "Обращения по данным Meta"), min_value=0.0, value=0.0)
             with m3:
                 reported_result_type = st.text_input(tr("Reported result type", "Тип результата в отчёте"), value=tr("Conversation", "Диалог"))
             cost_per_reported_result = safe_div(reported_spend, reported_results)
@@ -1383,7 +1462,7 @@ else:
 
         default_paid_spend = reported_spend
         actual_paid_spend = st.number_input(
-            tr("Actual amount paid ($)", "Фактически оплаченная сумма ($)"),
+            tr("Actual amount paid", "Фактически оплачено"),
             min_value=0.0,
             value=float(default_paid_spend),
         )
@@ -1411,7 +1490,7 @@ else:
 
         default_real_conversations = reported_results if meta_counts_reflect_real else 0.0
         real_conversations = st.number_input(
-            tr("Actual meaningful conversations", "Реальные meaningful conversations"),
+            tr("Actual meaningful conversations", "Реальные обращения"),
             min_value=0.0,
             value=float(default_real_conversations),
         )
@@ -1428,7 +1507,7 @@ else:
         real_orders = st.number_input(tr("Orders", "Заказы"), min_value=0.0, value=0.0)
         refund_count = st.number_input(tr("Refunds / cancellations", "Возвраты / отмены"), min_value=0.0, value=0.0)
         lead_quality = st.selectbox(
-            tr("Lead quality", "Качество лидов"),
+            tr("Quality of leads", "Качество обращений"),
             options=["weak", "mixed", "strong"],
             format_func=lambda x: {
                 "weak": tr("Weak", "Слабое"),
@@ -1446,8 +1525,8 @@ else:
         r1, r2, r3, r4 = st.columns(4)
         r1.metric(tr("Reported spend", "Расход по отчёту"), format_money(reported_spend))
         r2.metric(tr("Actual paid spend", "Фактически оплачено"), format_money(true_spend))
-        r3.metric(tr("Used conversations", "Используемые диалоги"), f"{used_conversations:.1f}")
-        r4.metric(tr("Spend overhead %", "Оверхед по расходу %"), f"{spend_overhead_pct:.1f}%")
+        r3.metric(tr("Used conversations", "Используемые обращения"), f"{used_conversations:.1f}")
+        r4.metric(tr("Overhead %", "Разница в расходах %"), f"{spend_overhead_pct:.1f}%")
 
     with tab_economics:
         st.caption(tr("Step 3 of 4 — Fill in your unit economics. Then move to ④ Decision.", "Шаг 3 из 4 — Заполните юнит-экономику. Затем перейдите на ④ Решение."))
@@ -1455,14 +1534,14 @@ else:
 
         e1, e2, e3 = st.columns(3)
         with e1:
-            aov = st.number_input(money_label(tr("Средний чек", "Средний чек")), min_value=0.0, value=0.0)
-            cogs_per_order = st.number_input(money_label(tr("Себестоимость одного заказа", "Себестоимость одного заказа")), min_value=0.0, value=0.0)
+            aov = st.number_input(money_label(tr("Average order value", "Средний чек")), min_value=0.0, value=0.0)
+            cogs_per_order = st.number_input(money_label(tr("Product cost per order", "Себестоимость одного заказа")), min_value=0.0, value=0.0)
         with e2:
             refund_rate_pct = st.number_input(tr("Refund rate (%)", "Процент возвратов (%)"), min_value=0.0, max_value=100.0, value=0.0)
-            desired_profit_per_order = st.number_input(money_label(tr("Желаемая прибыль с заказа", "Желаемая прибыль с заказа")), min_value=0.0, value=0.0)
+            desired_profit_per_order = st.number_input(money_label(tr("Target profit per order", "Желаемая прибыль с заказа")), min_value=0.0, value=0.0)
         with e3:
             max_acceptable_cac_pct_of_price = st.number_input(
-                tr("Max acceptable CAC as % of price", "Максимально допустимый CAC как % от цены"),
+                tr("Max acceptable CAC as % of price", "Макс. стоимость клиента, % от цены"),
                 min_value=0.0,
                 max_value=500.0,
                 value=0.0,
@@ -1471,7 +1550,7 @@ else:
         repeat_purchase_value = 0.0
         if repeat_purchase_default == "yes":
             repeat_purchase_value = st.number_input(
-                tr("Expected repeat value / LTV uplift ($)", "Ожидаемая повторная выручка"),
+                tr("Expected repeat value", "Ожидаемая повторная выручка"),
                 min_value=0.0,
                 value=0.0,
             )
@@ -1483,7 +1562,7 @@ else:
             value=0.20,
         )
         close_rate_confidence = st.selectbox(
-            tr("Confidence in close rate", "Уверенность в close rate"),
+            tr("Confidence in close rate", "Насколько вы уверены в конверсии в покупку"),
             options=["low", "medium", "high"],
             format_func=lambda x: {
                 "low": tr("Low", "Низкая"),
@@ -1492,16 +1571,16 @@ else:
             }[x],
         )
         close_rate_source = st.selectbox(
-            tr("Close rate is based on", "Close rate основан на"),
+            tr("Close rate is based on", "Откуда взята конверсия в покупку"),
             options=["real_data", "past_campaigns", "guess"],
             format_func=lambda x: {
-                "real_data": tr("Real history", "Реальные данные"),
+                "real_data": tr("Real history", "Фактические данные"),
                 "past_campaigns": tr("Previous campaigns", "Предыдущие кампании"),
                 "guess": tr("Guess", "Предположение"),
             }[x],
         )
         real_lead_definition = st.selectbox(
-            tr("What counts as a real lead?", "Что считать реальным лидом?"),
+            tr("What counts as a real lead?", "Что считать реальным обращением?"),
             options=["any_conversation", "осмысленное_обращение", "qualified_lead", "consultation_booked"],
             format_func=lambda x: {
                 "any_conversation": tr("Any conversation", "Любой диалог"),
@@ -1561,7 +1640,7 @@ else:
         e6.metric(tr("Target CAC", "Желаемая стоимость клиента"), format_money(target_cac))
 
         e7, e8, e9 = st.columns(3)
-        e7.metric(tr("Cost per conversation", "Стоимость диалога"), format_money(cost_per_conversation))
+        e7.metric(tr("Cost per conversation", "Стоимость обращения"), format_money(cost_per_conversation))
         e8.metric(tr("Estimated CAC", "Расчётная стоимость клиента"), format_money(estimated_cac))
         e9.metric(tr("Max cost per conversation", "Максимальная стоимость обращения"), format_money(max_cost_per_conversation))
 
@@ -1620,7 +1699,7 @@ else:
         if not _data_ready:
             st.info(
                 tr(
-                    "⬅️ Fill in tabs ①, ②, and ③ first — at minimum enter AOV in ③ Economics — then come back here for your decision.",
+                    "⬅️ Fill in tabs ①, ②, and ③ first — at minimum enter Средний чек in ③ Economics — then come back here for your decision.",
                     "⬅️ Сначала заполните вкладки ①, ② и ③ — как минимум укажите средний чек в ③ Экономика — затем вернитесь сюда за выводом.",
                 )
             )
@@ -1631,7 +1710,7 @@ else:
             "ранний_тест": tr("Early test", "Ранний тест"),
             "данных_достаточно": tr("Validated", "Подтверждённый режим"),
         }.get(mode_key, tr("Early test", "Ранний тест"))
-        mode_badge_class = "fragile" if mode_key == "ранний_тест" else "safe"
+        mode_badge_class = "safe" if mode_key == "данных_достаточно" else "fragile"
         st.markdown(f'<div class="big-status {mode_badge_class}">{mode_label}</div>', unsafe_allow_html=True)
 
         meta_col, biz_col = st.columns(2)
@@ -1640,15 +1719,15 @@ else:
             st.metric(tr("Reported spend", "Расход по отчёту"), format_money(reported_spend))
             st.metric(tr("Reported results", "Результаты по отчёту"), f"{reported_results:.1f}")
             st.metric(tr("Result type", "Тип результата"), reported_result_type[:32] if reported_result_type else tr("n/a", "н/д"))
-            st.metric(tr("Cost per reported result", "Стоимость reported result"), format_money(cost_per_reported_result))
+            st.metric(tr("Cost per reported result", "Стоимость результата по отчёту"), format_money(cost_per_reported_result))
         with biz_col:
             st.subheader(tr("What the business actually saw", "Что бизнес увидел на самом деле"))
             st.metric(tr("Actual paid spend", "Фактически оплачено"), format_money(true_spend))
-            st.metric(tr("Real conversations", "Реальные диалоги"), f"{used_conversations:.1f}")
+            st.metric(tr("Real conversations", "Реальные обращения"), f"{used_conversations:.1f}")
             st.metric(tr("Qualified leads", "Квалифицированные обращения"), f"{qualified_leads:.1f}")
             st.metric(tr("Orders", "Заказы"), f"{real_orders:.1f}")
             st.metric(
-                tr("Lead quality", "Качество лидов"),
+                tr("Quality of leads", "Качество обращений"),
                 tr("Weak", "Слабое") if lead_quality == "weak" else tr("Mixed", "Смешанное") if lead_quality == "mixed" else tr("Strong", "Сильное"),
             )
             st.write(f"**{tr('Spend overhead %', 'Оверхед по расходу %')}:** {spend_overhead_pct:.1f}%")
@@ -1667,43 +1746,43 @@ else:
 
         st.subheader(tr("Funnel comparison", "Сравнение воронки"))
         f1, f2, f3, f4 = st.columns(4)
-        f1.metric(tr("Meta reported conversations", "Диалоги по данным Meta"), f"{reported_results:.1f}")
-        f2.metric(tr("Real conversations", "Реальные диалоги"), f"{used_conversations:.1f}")
+        f1.metric(tr("Meta reported conversations", "Обращения по данным Meta"), f"{reported_results:.1f}")
+        f2.metric(tr("Real conversations", "Реальные обращения"), f"{used_conversations:.1f}")
         f3.metric(tr("Qualified leads", "Квалифицированные обращения"), f"{qualified_leads:.1f}")
         f4.metric(tr("Orders", "Заказы"), f"{real_orders:.1f}")
 
         fp1, fp2, fp3 = st.columns(3)
         fp1.metric(
-            tr("Real conversations / Meta reported", "Реальные диалоги / Meta reported"),
+            tr("Real conversations / Meta reported", "Реальные / по Meta"),
             f"{safe_div(used_conversations, reported_results) * 100:.1f}%" if reported_results > 0 else tr("n/a", "н/д"),
         )
         fp2.metric(
-            tr("Qualified leads / Real conversations", "Квал. обращения / Реальные диалоги"),
+            tr("Qualified leads / Real conversations", "Качественные / реальные"),
             f"{safe_div(qualified_leads, used_conversations) * 100:.1f}%" if used_conversations > 0 else tr("n/a", "н/д"),
         )
         base_for_orders = qualified_leads if qualified_leads > 0 else used_conversations
         fp3.metric(
-            tr("Orders / Qualified", "Заказы / Квал."),
+            tr("Orders / Qualified", "Покупки / база"),
             f"{safe_div(real_orders, base_for_orders) * 100:.1f}%" if base_for_orders > 0 else tr("n/a", "н/д"),
         )
 
         st.subheader(tr("Business economics", "Экономика бизнеса"))
         x1, x2, x3 = st.columns(3)
-        x1.metric("AOV", format_money(aov))
-        x2.metric(tr("COGS", "COGS"), format_money(cogs_per_order))
+        x1.metric("Средний чек", format_money(aov))
+        x2.metric(tr("Product cost", "Себестоимость"), format_money(cogs_per_order))
         x3.metric(tr("Gross margin %", "Валовая маржа %"), f"{gross_margin_pct:.1f}%")
         x4, x5 = st.columns(2)
         x4.metric(tr("Break-even CAC", "Стоимость клиента без убытка"), format_money(break_even_cac))
         x5.metric(tr("Target CAC", "Желаемая стоимость клиента"), format_money(target_cac))
-        st.write(f"**{tr('CAC as % of price', 'CAC как % от цены')}:** {target_cac_pct_of_price:.1f}%")
+        st.write(f"**{tr('CAC as % of price', 'Стоимость клиента как % от цены')}:** {target_cac_pct_of_price:.1f}%")
         st.write(f"**{tr('Max cost per conversation', 'Максимальная стоимость обращения')}:** {format_money(max_cost_per_conversation)}")
 
         budget_header = tr("Recommended test budget", "Рекомендуемый бюджет на тест")
         st.subheader(budget_header)
         tb1, tb2, tb3, tb4 = st.columns(4)
-        tb1.metric(tr("Budget for 10 conversations", "Бюджет на 10 диалогов"), format_money(cost_per_conversation * 10))
-        tb2.metric(tr("Budget for 20 conversations", "Бюджет на 20 диалогов"), format_money(cost_per_conversation * 20))
-        tb3.metric(tr("Budget for 30 conversations", "Бюджет на 30 диалогов"), format_money(cost_per_conversation * 30))
+        tb1.metric(tr("Budget for 10 conversations", "Бюджет на 10 обращений"), format_money(cost_per_conversation * 10))
+        tb2.metric(tr("Budget for 20 conversations", "Бюджет на 20 обращений"), format_money(cost_per_conversation * 20))
+        tb3.metric(tr("Budget for 30 conversations", "Бюджет на 30 обращений"), format_money(cost_per_conversation * 30))
         tb4.metric(tr("Budget for selected threshold", "Бюджет под выбранный порог"), format_money(recommended_test_budget))
 
         st.subheader(tr("How reliable this analysis is", "Насколько надёжен этот анализ"))
@@ -1726,7 +1805,7 @@ else:
             )
             for item in [
                 tr("Actual paid spend", "Фактически оплаченный расход"),
-                tr("Real conversations", "Реальные диалоги"),
+                tr("Real conversations", "Реальные обращения"),
                 tr("Qualified leads", "Квалифицированные обращения"),
                 tr("First orders", "Первые заказы"),
                 tr("Refunds / cancellations", "Возвраты / отмены"),
@@ -1735,7 +1814,7 @@ else:
 
         st.subheader(tr("Key answers", "Ключевые ответы"))
         theory_answer = (
-            tr("Yes, if CAC stays below target CAC.", "Да, если CAC держится ниже целевого CAC.")
+            tr("Yes, if CAC stays below target CAC.", "Да, если стоимость клиента ниже целевого уровня.")
             if target_cac > 0
             else tr("Not yet. The first-order economics do not currently support ads.", "Пока нет. Экономика первого заказа пока не поддерживает рекламу.")
         )
@@ -1754,7 +1833,7 @@ else:
             "ранний_тест": tr("Too early to judge profitability.", "Слишком рано судить о прибыльности."),
             "новый_бизнес": tr("Not yet. Validate assumptions first.", "Пока нет. Сначала проверьте предположения на практике."),
         }.get(mode_key, tr("Not enough data to judge yet.", "Данных пока недостаточно."))
-        st.write(f"1. {tr('Can this business support ads in theory?', 'Может ли бизнес в теории выдержать рекламу?')} {theory_answer}")
+        st.write(f"1. {tr('Can this business support ads in theory?', 'Может ли эта экономика выдержать рекламу?')} {theory_answer}")
         st.write(f"2. {tr('Is the current data enough to judge?', 'Достаточно ли текущих данных для вывода?')} {data_answer}")
         st.write(f"3. {tr('How much should be spent next to get enough evidence?', 'Сколько потратить дальше, чтобы получить достаточно данных?')} **{next_budget_answer}**")
         st.write(f"4. {tr('If evidence is strong enough, should we scale?', 'Если данных достаточно, стоит ли масштабироваться?')} {scale_answer}")
@@ -1775,7 +1854,7 @@ else:
             default_decay = 10 if preset == "optimistic" else 25 if preset == "realistic" else 50
             spend_change_pct = st.slider(tr("Planned ad spend change (%)", "Планируемое изменение бюджета (%)"), -80, 300, 50)
             cac_deterioration_per_100 = st.slider(
-                tr("If you double spend, how much can CAC increase (%)?", "Если удвоить бюджет, на сколько может вырасти CAC (%)?"),
+                tr("If you double spend, how much can acquisition cost rise (%)?", "Если удвоить бюджет, на сколько может вырасти стоимость клиента (%)?"),
                 0,
                 100,
                 default_decay,
