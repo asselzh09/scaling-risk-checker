@@ -352,22 +352,28 @@ st.markdown(
     """
     <style>
     .big-status {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
-        padding: 16px;
-        border-radius: 12px;
-        margin-top: 8px;
-        margin-bottom: 8px;
-    }
-    .safe { background-color: #d4edda; color: #155724; }
-    .fragile { background-color: #fff3cd; color: #856404; }
-    .hold { background-color: #f8d7da; color: #721c24; }
-    .small-note { color: #666; font-size: 13px; }
-    div[data-testid="stMetric"] {
-        background: #fafafa;
-        border: 1px solid #eeeeee;
-        padding: 10px;
+        padding: 14px 18px;
         border-radius: 10px;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        border-left: 5px solid;
+    }
+    .safe  { border-color: #2e9e5b; color: #2e9e5b; background: rgba(46,158,91,0.10); }
+    .fragile { border-color: #d4882a; color: #d4882a; background: rgba(212,136,42,0.10); }
+    .hold  { border-color: #d44242; color: #d44242; background: rgba(212,66,66,0.10); }
+    .small-note { opacity: 0.6; font-size: 13px; }
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(128,128,128,0.2);
+        padding: 10px 12px;
+        border-radius: 10px;
+    }
+    /* Progress tab hint */
+    .tab-hint {
+        font-size: 13px;
+        opacity: 0.55;
+        margin-bottom: 6px;
     }
     </style>
     """,
@@ -386,7 +392,12 @@ def safe_div(a, b):
 
 
 def format_money(v):
-    return f"${v:,.2f}"
+    if v is None:
+        return "n/a"
+    try:
+        return f"${float(v):,.2f}"
+    except (TypeError, ValueError):
+        return "n/a"
 
 
 def parse_number_series(series):
@@ -651,15 +662,19 @@ def find_safe_max_scale_pct(
     cac_deterioration_per_100_pct: float,
     max_search_pct: int = 300,
 ):
+    # Check baseline first
+    baseline = simulate_scale(
+        revenue=revenue, cogs=cogs, ad_spend=ad_spend, orders=orders,
+        refund_rate_pct=refund_rate_pct, spend_change_pct=0,
+        cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
+    )
+    if baseline["new_profit"] < 0:
+        return 0
     last_safe = 0
-    for pct in range(0, max_search_pct + 1):
+    for pct in range(1, max_search_pct + 1):
         r = simulate_scale(
-            revenue=revenue,
-            cogs=cogs,
-            ad_spend=ad_spend,
-            orders=orders,
-            refund_rate_pct=refund_rate_pct,
-            spend_change_pct=pct,
+            revenue=revenue, cogs=cogs, ad_spend=ad_spend, orders=orders,
+            refund_rate_pct=refund_rate_pct, spend_change_pct=pct,
             cac_deterioration_per_100_pct=cac_deterioration_per_100_pct,
         )
         if r["new_profit"] >= 0:
@@ -765,6 +780,7 @@ def plot_profit_curve(df_curve):
     ax.set_ylabel("Net Profit")
     ax.set_title(t["chart_hdr"])
     st.pyplot(fig)
+    plt.close(fig)
 
     peak_profit = float(peak["profit"])
     peak_spend = float(peak["ad_spend"])
@@ -817,15 +833,19 @@ def tr(en, ru):
     return en if lang == "English" else ru
 
 
-def classify_mode_v2(source_key, used_conversations, real_orders, threshold, close_rate_confidence, has_economics, true_spend):
+def classify_mode_v2(source_key, used_conversations, real_orders, threshold, close_rate_confidence, close_rate_source, has_economics, true_spend):
     if source_key == "new_business_assumptions_only":
         return "new_business"
+    # Require close_rate_source to be real_data or past_campaigns (not guess),
+    # and close_rate_confidence to not be low. This aligns with get_confidence_v2's
+    # high-confidence gate so the badge and the confidence label never contradict each other.
+    close_rate_ok = close_rate_confidence != "low" and close_rate_source != "guess"
     if (
         used_conversations >= threshold
         and real_orders >= 3
         and has_economics
         and true_spend > 0
-        and close_rate_confidence != "low"
+        and close_rate_ok
     ):
         return "validated"
     return "early_test"
@@ -1242,14 +1262,15 @@ if source_key == "new_business_assumptions_only":
 else:
     tab_upload, tab_reality, tab_economics, tab_decision = st.tabs(
         [
-            tr("Upload & detect", "Загрузка и распознавание"),
-            tr("Reality check", "Проверка реальности"),
-            tr("Economics", "Экономика"),
-            tr("Decision", "Решение"),
+            tr("① Upload & detect", "① Загрузка и данные"),
+            tr("② Reality check", "② Проверка реальности"),
+            tr("③ Economics", "③ Экономика"),
+            tr("④ Decision", "④ Решение"),
         ]
     )
 
     with tab_upload:
+        st.caption(tr("Step 1 of 4 — Enter your campaign source data. Then move to ② Reality check.", "Шаг 1 из 4 — Введите данные кампании. Затем перейдите на ② Проверка реальности."))
         st.subheader(tr("Campaign source", "Источник кампании"))
 
         if source_key == "upload_meta_report":
@@ -1312,7 +1333,10 @@ else:
                     detected_campaigns = len(selected_campaigns) if selected_campaigns else len(campaigns)
 
                     unique_indicator_values = sorted(df[col_indicator].dropna().astype(str).unique().tolist())
-                    sample_values = unique_indicator_values[:5]
+                    # Build result type sample from the filtered (messaging + selected campaigns) data,
+                    # not from the full original df — otherwise it shows unrelated result types.
+                    filtered_indicator_values = sorted(df_msg[col_indicator].dropna().astype(str).unique().tolist())
+                    sample_values = filtered_indicator_values[:5]
                     reported_result_type = ", ".join(sample_values) if sample_values else tr("Not detected", "Не определён")
                     cost_per_reported_result = safe_div(reported_spend, reported_results)
 
@@ -1348,6 +1372,7 @@ else:
         ) == "yes"
 
     with tab_reality:
+        st.caption(tr("Step 2 of 4 — Correct Meta data with real numbers from your CRM/inbox. Then move to ③ Economics.", "Шаг 2 из 4 — Скорректируйте данные Meta реальными цифрами из CRM/инбокса. Затем перейдите на ③ Экономика."))
         st.subheader(tr("Correct Meta data with real business numbers", "Скорректируйте данные Meta реальными бизнес-данными"))
 
         default_paid_spend = reported_spend
@@ -1355,6 +1380,15 @@ else:
             tr("Actual amount paid ($)", "Фактически оплаченная сумма ($)"),
             min_value=0.0,
             value=float(default_paid_spend),
+        )
+        # Explicit override flag: lets user set spend to $0 intentionally.
+        # Without this, entering 0 was silently ignored and reported_spend was reused.
+        spend_override_active = st.checkbox(
+            tr(
+                "Override detected spend with the value above (including if it's $0)",
+                "Использовать введённое значение вместо автоопределённого (включая $0)",
+            ),
+            value=False,
         )
         spend_reason = st.selectbox(
             tr("Difference reason", "Причина расхождения"),
@@ -1375,6 +1409,15 @@ else:
             min_value=0.0,
             value=float(default_real_conversations),
         )
+        # Explicit override flag: lets user intentionally set conversations to 0.
+        # Without this, entering 0 was silently ignored and reported_results was reused.
+        convo_override_active = st.checkbox(
+            tr(
+                "Override Meta's conversation count with the value above (including if it's 0)",
+                "Использовать введённое количество диалогов вместо данных Meta (включая 0)",
+            ),
+            value=meta_counts_reflect_real,
+        )
         qualified_leads = st.number_input(tr("Qualified leads", "Квалифицированные лиды"), min_value=0.0, value=0.0)
         real_orders = st.number_input(tr("Orders", "Заказы"), min_value=0.0, value=0.0)
         refund_count = st.number_input(tr("Refunds / cancellations", "Возвраты / отмены"), min_value=0.0, value=0.0)
@@ -1388,8 +1431,9 @@ else:
             }[x],
         )
 
-        true_spend = actual_paid_spend if actual_paid_spend > 0 else reported_spend
-        used_conversations = real_conversations if real_conversations > 0 else reported_results
+        # Use override values when the user explicitly opted in; otherwise fall back to reported values.
+        true_spend = actual_paid_spend if spend_override_active else (actual_paid_spend if actual_paid_spend > 0 else reported_spend)
+        used_conversations = real_conversations if convo_override_active else (real_conversations if real_conversations > 0 else reported_results)
         spend_is_adjusted = abs(actual_paid_spend - reported_spend) > 0.009
         spend_overhead_pct = safe_div(true_spend - reported_spend, reported_spend) * 100 if reported_spend > 0 else 0.0
 
@@ -1400,6 +1444,7 @@ else:
         r4.metric(tr("Spend overhead %", "Оверхед по расходу %"), f"{spend_overhead_pct:.1f}%")
 
     with tab_economics:
+        st.caption(tr("Step 3 of 4 — Fill in your unit economics. Then move to ④ Decision.", "Шаг 3 из 4 — Заполните юнит-экономику. Затем перейдите на ④ Решение."))
         st.subheader(tr("Business economics", "Экономика бизнеса"))
 
         e1, e2, e3 = st.columns(3)
@@ -1520,6 +1565,7 @@ else:
         real_orders=real_orders,
         threshold=target_conversations,
         close_rate_confidence=close_rate_confidence,
+        close_rate_source=close_rate_source,
         has_economics=has_economics,
         true_spend=true_spend,
     )
@@ -1562,11 +1608,23 @@ else:
     )
 
     with tab_decision:
+        # Guard: show a prompt if no meaningful data has been entered yet.
+        # Allow zero spend (audit / planning use case) as long as economics are filled.
+        _data_ready = aov > 0
+        if not _data_ready:
+            st.info(
+                tr(
+                    "⬅️ Fill in tabs ①, ②, and ③ first — at minimum enter AOV in ③ Economics — then come back here for your decision.",
+                    "⬅️ Сначала заполните вкладки ①, ② и ③ — как минимум укажите средний чек в ③ Экономика — затем вернитесь сюда за выводом.",
+                )
+            )
+            st.stop()
         st.subheader(tr("Decision", "Решение"))
         mode_label = {
+            "new_business": tr("New Business", "Новый бизнес"),
             "early_test": tr("Early test", "Ранний тест"),
             "validated": tr("Validated", "Подтверждённый режим"),
-        }[mode_key]
+        }.get(mode_key, tr("Early test", "Ранний тест"))
         mode_badge_class = "fragile" if mode_key == "early_test" else "safe"
         st.markdown(f'<div class="big-status {mode_badge_class}">{mode_label}</div>', unsafe_allow_html=True)
 
@@ -1624,10 +1682,11 @@ else:
         )
 
         st.subheader(tr("Business economics", "Экономика бизнеса"))
-        x1, x2, x3, x4, x5 = st.columns(5)
+        x1, x2, x3 = st.columns(3)
         x1.metric("AOV", format_money(aov))
         x2.metric(tr("COGS", "COGS"), format_money(cogs_per_order))
         x3.metric(tr("Gross margin %", "Валовая маржа %"), f"{gross_margin_pct:.1f}%")
+        x4, x5 = st.columns(2)
         x4.metric(tr("Break-even CAC", "CAC безубыточности"), format_money(break_even_cac))
         x5.metric(tr("Target CAC", "Целевой CAC"), format_money(target_cac))
         st.write(f"**{tr('CAC as % of price', 'CAC как % от цены')}:** {target_cac_pct_of_price:.1f}%")
@@ -1687,7 +1746,8 @@ else:
         scale_answer = {
             "validated": recommendation_headline,
             "early_test": tr("Too early to judge profitability.", "Слишком рано судить о прибыльности."),
-        }[mode_key]
+            "new_business": tr("Not yet. Validate assumptions first.", "Пока нет. Сначала проверьте предположения."),
+        }.get(mode_key, tr("Not enough data to judge yet.", "Данных пока недостаточно."))
         st.write(f"1. {tr('Can this business support ads in theory?', 'Может ли бизнес теоретически выдержать рекламу?')} {theory_answer}")
         st.write(f"2. {tr('Is the current data enough to judge?', 'Достаточно ли текущих данных для вывода?')} {data_answer}")
         st.write(f"3. {tr('How much should be spent next to get enough evidence?', 'Сколько потратить дальше, чтобы получить достаточно данных?')} **{next_budget_answer}**")
@@ -1778,12 +1838,15 @@ else:
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
 st.sidebar.markdown(f"### {tr('Mode summary', 'Сводка режима')}")
-st.sidebar.write(f"**{tr('Goal', 'Цель')}:** {analysis_goal_map[analysis_goal]}")
-st.sidebar.write(f"**{tr('Source', 'Источник')}:** {dict(source_options)[source_key]}")
-st.sidebar.write(
-    f"**{tr('Classified mode', 'Классифицированный режим')}:** "
-    f"{tr('New business', 'Новый бизнес') if mode_key == 'new_business' else tr('Early test', 'Ранний тест') if mode_key == 'early_test' else tr('Validated', 'Подтверждённый режим')}"
-)
-st.sidebar.write(f"**{tr('Confidence', 'Уверенность')}:** {confidence_label}")
-if business_name:
-    st.sidebar.write(f"**{tr('Business', 'Бизнес')}:** {business_name}")
+if true_spend > 0 or source_key == "new_business_assumptions_only":
+    st.sidebar.write(f"**{tr('Goal', 'Цель')}:** {analysis_goal_map[analysis_goal]}")
+    st.sidebar.write(f"**{tr('Source', 'Источник')}:** {dict(source_options)[source_key]}")
+    st.sidebar.write(
+        f"**{tr('Classified mode', 'Классифицированный режим')}:** "
+        f"{tr('New business', 'Новый бизнес') if mode_key == 'new_business' else tr('Early test', 'Ранний тест') if mode_key == 'early_test' else tr('Validated', 'Подтверждённый режим')}"
+    )
+    st.sidebar.write(f"**{tr('Confidence', 'Уверенность')}:** {confidence_label}")
+    if business_name:
+        st.sidebar.write(f"**{tr('Business', 'Бизнес')}:** {business_name}")
+else:
+    st.sidebar.caption(tr("Fill in your data to see the summary here.", "Заполните данные, чтобы увидеть сводку."))
