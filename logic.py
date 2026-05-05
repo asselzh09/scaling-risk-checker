@@ -527,9 +527,14 @@ def get_recommendation_v2(
             ]
         return headline, body
 
-    if refund_count > 0:
+    refund_order_rate = safe_div(refund_count, real_orders) if real_orders > 0 else 0.0
+    if refund_order_rate >= 0.10 or (refund_count >= 3 and refund_order_rate >= 0.05):
         return _tr(lang, "Fix refunds first", "Сначала разберитесь с возвратами"), [
-            _tr(lang, "Refund leakage is reducing how much CAC the business can safely afford.", "Возвраты уменьшают ту стоимость клиента, которую бизнес может выдержать без убытка."),
+            _tr(
+                lang,
+                f"Refunds are {refund_order_rate:.1%} of orders, which reduces how much CAC the business can safely afford.",
+                f"Возвраты составляют {refund_order_rate:.1%} от заказов и уменьшают безопасную стоимость привлечения клиента.",
+            ),
         ]
     if lead_quality == "weak":
         return _tr(lang, "Improve lead quality", "Улучшите качество обращений"), [

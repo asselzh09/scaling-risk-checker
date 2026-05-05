@@ -786,6 +786,11 @@ def step_numbers_upload():
     if uploaded is not None:
         try:
             df = read_uploaded_report(uploaded)
+            # If this is a different file, wipe stale column selections
+            if uploaded.name != st.session_state.get("_uploaded_filename"):
+                for _stale_key in ("_col_campaign", "_col_spend", "_col_results",
+                                   "_col_indicator", "_selected_campaigns"):
+                    st.session_state.pop(_stale_key, None)
             st.session_state._uploaded_df = df
             st.session_state._uploaded_filename = uploaded.name
             # Lock routing to upload mode the moment a file is successfully read
@@ -831,6 +836,15 @@ def step_numbers_upload():
                 index=guess_index_from_patterns(cols, ["Result indicator", "Action type", "Result type"]),
                 key="_col_indicator",
             )
+
+        # Guard: session-state may hold a stale column name from a previous file
+        def _safe_col(name, fallback_cols):
+            return name if name in df.columns else fallback_cols[0]
+
+        col_campaign  = _safe_col(col_campaign,  cols)
+        col_spend     = _safe_col(col_spend,     cols)
+        col_results   = _safe_col(col_results,   cols)
+        col_indicator = _safe_col(col_indicator, cols)
 
         indicator_series = df[col_indicator].astype(str).str.lower()
         msg_mask = (
