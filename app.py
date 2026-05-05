@@ -800,7 +800,7 @@ def step_numbers_upload():
             st.error(f"{tr('Could not read the file.', 'Не удалось прочитать файл.')} {e}")
             st.session_state._uploaded_df = None
 
-    df = st.session_state._uploaded_df
+    df = st.session_state.get("_uploaded_df")
 
     if df is None:
         st.info(tr("Upload a file to continue.", "Загрузите файл, чтобы продолжить."))
@@ -861,7 +861,7 @@ def step_numbers_upload():
         selected_campaigns = st.multiselect(
             tr("Include which campaigns?", "Какие кампании включить?"),
             campaigns,
-            default=st.session_state._selected_campaigns or campaigns,
+            default=st.session_state.get("_selected_campaigns") or campaigns,
             key="_selected_campaigns",
         )
         if selected_campaigns:
@@ -1919,7 +1919,8 @@ def step_decision():
     with cols[-1]:
         if st.button(tr("Start over", "Начать заново"), use_container_width=True):
             for k in list(st.session_state.keys()):
-                del st.session_state[k]
+                if not k.startswith("_streamlit"):
+                    del st.session_state[k]
             st.rerun()
 
 
@@ -1969,7 +1970,8 @@ with st.sidebar:
     st.markdown("---")
     if st.button(tr("Reset all", "Сбросить всё"), use_container_width=True, key="sb_reset"):
         for k in list(st.session_state.keys()):
-            del st.session_state[k]
+            if not k.startswith("_streamlit"):
+                del st.session_state[k]
         st.rerun()
 
 
