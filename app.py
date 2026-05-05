@@ -842,6 +842,65 @@ def step_numbers_upload():
         s3.metric(tr("Campaigns included", "Кампаний учтено"),
                   len(selected_campaigns) if selected_campaigns else len(campaigns))
 
+        # ── Campaign-level breakdown table (fix 2+3) ──────────────────────
+        if not df_msg.empty and selected_campaigns:
+            st.markdown(f"**{tr('Campaign breakdown', 'Разбивка по кампаниям')}**")
+
+            # Detect date columns by common Meta naming patterns
+            _date_patterns_start = ["reporting starts", "start date", "date start", "starts"]
+            _date_patterns_end   = ["reporting ends",   "end date",   "date stop",  "ends"]
+            date_col_start = next(
+                (c for c in df_msg.columns
+                 if any(p in c.lower() for p in _date_patterns_start)),
+                None,
+            )
+            date_col_end = next(
+                (c for c in df_msg.columns
+                 if any(p in c.lower() for p in _date_patterns_end)
+                 and c != date_col_start),
+                None,
+            )
+
+            _agg = {
+                tr("Spend", "Расход"):      (col_spend,   "sum"),
+                tr("Results", "Результаты"): (col_results, "sum"),
+            }
+            if date_col_start:
+                _agg[tr("From", "С")] = (date_col_start, "min")
+            if date_col_end:
+                _agg[tr("To", "По")]  = (date_col_end,   "max")
+
+            grp = df_msg.groupby(col_campaign, as_index=False).agg(**_agg)
+
+            _spend_col   = tr("Spend", "Расход")
+            _results_col = tr("Results", "Результаты")
+            grp[tr("Cost / result", "Стоимость / результат")] = grp.apply(
+                lambda row: round(safe_div(row[_spend_col], row[_results_col]), 2)
+                if row[_results_col] > 0 else None,
+                axis=1,
+            )
+            grp[_spend_col]   = grp[_spend_col].round(2)
+            grp[_results_col] = grp[_results_col].round(1)
+
+            st.dataframe(grp, use_container_width=True, hide_index=True)
+
+            # ── Mini-summary: best / worst / biggest campaign (feature 1) ──
+            _cpr_col2 = tr("Cost / result", "Стоимость / результат")
+            _grp_valid = grp[grp[_results_col] > 0].dropna(subset=[_cpr_col2])
+            if len(_grp_valid) > 1:
+                _best_row  = _grp_valid.loc[_grp_valid[_cpr_col2].idxmin()]
+                _worst_row = _grp_valid.loc[_grp_valid[_cpr_col2].idxmax()]
+                _big_row   = grp.loc[grp[_results_col].idxmax()]
+                st.markdown(
+                    f"🟢 **{tr('Cheapest cost/result', 'Лучшая цена/результат')}:** "
+                    f"{_best_row[col_campaign]} — {format_money(_best_row[_cpr_col2])}  \n"
+                    f"🔴 **{tr('Most expensive', 'Самая дорогая')}:** "
+                    f"{_worst_row[col_campaign]} — {format_money(_worst_row[_cpr_col2])}  \n"
+                    f"📊 **{tr('Highest volume', 'Наибольший объём')}:** "
+                    f"{_big_row[col_campaign]} — "
+                    f"{_big_row[_results_col]:.0f} {tr('results', 'результатов')}"
+                )
+
     # ---- 2. Reality check
     st.markdown("")
     section_open(
@@ -1195,6 +1254,14 @@ def step_numbers_manual():
 
 
 def step_numbers():
+    # Auto-switch to upload path if a file was already loaded but source_key
+    # was never explicitly changed away from the default.
+    if (
+        st.session_state._uploaded_df is not None
+        and st.session_state.source_key == "manual_inputs_only"
+    ):
+        st.session_state.source_key = "upload_meta_report"
+
     if st.session_state.source_key == "новый_бизнес_assumptions_only":
         step_numbers_new_biz()
     elif st.session_state.source_key == "upload_meta_report":
@@ -1432,6 +1499,36 @@ def step_decision():
             format_money(d["break_even_cac"]),
         )
 
+    # ---- Meta vs Reality table (feature 2) ----
+    if d["path"] == "real":
+        _cpr       = d.get("cost_per_reported_result", 0)
+        _cpc       = d.get("cost_per_conversation", 0)
+        _rep_res   = d.get("reported_results", 0)
+        _real_conv = d.get("used_conversations", 0)
+        _rep_sp    = d.get("reported_spend", 0)
+        _real_sp   = d.get("true_spend", 0)
+
+        if _rep_res > 0 or _rep_sp > 0 or _real_conv > 0 or _real_sp > 0:
+            st.markdown(f"**{tr('Meta vs Reality', 'Meta vs реальность')}**")
+            _mv_df = pd.DataFrame({
+                tr("Metric", "Метрика"): [
+                    tr("Conversations / results", "Диалоги / результаты"),
+                    tr("Ad spend", "Расход на рекламу"),
+                    tr("Cost per dialogue", "Стоимость диалога"),
+                ],
+                "Meta": [
+                    f"{_rep_res:.0f}" if _rep_res > 0 else "—",
+                    format_money(_rep_sp) if _rep_sp > 0 else "—",
+                    format_money(_cpr) if _cpr > 0 else "—",
+                ],
+                tr("Reality", "Реальность"): [
+                    f"{_real_conv:.0f}" if _real_conv > 0 else tr("not entered", "не введено"),
+                    format_money(_real_sp) if _real_sp > 0 else "—",
+                    format_money(_cpc) if _cpc > 0 else tr("need real convos", "нужны реальные обращения"),
+                ],
+            }).set_index(tr("Metric", "Метрика"))
+            st.table(_mv_df)
+
     # ---- What to do next ----
     if d["recommendation_points"]:
         bullets = "".join(f"<li>{p}</li>" for p in d["recommendation_points"])
@@ -1453,6 +1550,46 @@ def step_decision():
             "Низкая надёжность — анализ опирается на предположения или неполные данные ниже по воронке. "
             "Используйте для планирования, не как доказательство прибыльности."
         ))
+
+    # ---- Data sufficiency check (feature 3) ----
+    if d["path"] == "real":
+        _thresh    = d.get("threshold", 20)
+        _n_convos  = d.get("used_conversations", 0)
+        _n_orders  = s.real_orders
+
+        st.markdown(f"**{tr('Data sufficiency check', 'Проверка достаточности данных')}**")
+        _ad_ok     = _n_convos >= _thresh
+        _profit_ok = _n_orders >= 3
+
+        if _ad_ok:
+            st.success(tr(
+                f"✅ {int(_n_convos)} conversations — enough for an ad-signal verdict.",
+                f"✅ {int(_n_convos)} обращений — достаточно для вывода по рекламному сигналу.",
+            ))
+        else:
+            _need = int(_thresh - _n_convos)
+            st.warning(tr(
+                f"⚠️ {int(_n_convos)} conversations — not enough for an ad-signal verdict yet "
+                f"(need {_need} more to reach target of {int(_thresh)}).",
+                f"⚠️ {int(_n_convos)} обращений — недостаточно для вывода по рекламному сигналу "
+                f"(нужно ещё {_need}, чтобы достичь порога {int(_thresh)}).",
+            ))
+
+        if _profit_ok:
+            st.success(tr(
+                f"✅ {int(_n_orders)} orders — enough to evaluate first-order profitability.",
+                f"✅ {int(_n_orders)} заказов — достаточно для оценки прибыльности первого заказа.",
+            ))
+        elif _n_orders > 0:
+            st.warning(tr(
+                f"⚠️ {int(_n_orders)} order(s) — need at least 3 real orders for a profit verdict.",
+                f"⚠️ {int(_n_orders)} заказ(ов) — нужно минимум 3 реальных заказа для вывода о прибыли.",
+            ))
+        else:
+            st.warning(tr(
+                "⚠️ No real orders yet — required to evaluate profitability.",
+                "⚠️ Реальных заказов нет — они нужны для оценки прибыли.",
+            ))
 
     # ---- Reliability ----
     with st.expander(tr("Reliability of this analysis", "Насколько надёжен этот анализ"), expanded=False):
@@ -1566,15 +1703,18 @@ def step_decision():
         st.markdown(f"**3.** {tr('How much to spend next to get evidence?', 'Сколько потратить дальше для доказательств?')} — **{next_budget}**")
         st.markdown(f"**4.** {tr('If evidence is strong, should we scale?', 'Если данных достаточно — стоит ли масштабироваться?')} — {scale_answer}")
 
-    # ---- Scale simulation (only for validated mode + real orders) ----
+    # ---- Scale simulation (show whenever we have real orders, with caveats) ----
     if (
         d["path"] == "real"
-        and mode_key == "данных_достаточно"
-        and not low_confidence
         and s.real_orders > 0
         and s.aov > 0
     ):
         with st.expander(tr("Scale simulation", "Симуляция масштаба"), expanded=False):
+            if low_confidence or mode_key != "данных_достаточно":
+                st.info(tr(
+                    "Limited data — treat this simulation as a directional estimate, not a forecast.",
+                    "Мало данных — воспринимайте симуляцию как ориентир, а не как прогноз.",
+                ))
             preset = st.radio(
                 tr("How does ad efficiency usually behave when you scale?",
                    "Как обычно меняется эффективность при росте бюджета?"),
@@ -1595,7 +1735,8 @@ def step_decision():
                 tr("If you double spend, how much can CAC rise (%)?",
                    "При удвоении бюджета — на сколько вырастет CAC (%)?"),
                 0, 100, default_decay,
-                key="cac_deterioration_per_100",
+                # Key includes preset so Streamlit resets the slider when preset changes
+                key=f"cac_deterioration_{preset}",
             )
 
             model_revenue = s.aov * s.real_orders
@@ -1648,6 +1789,80 @@ def step_decision():
                     tr("Profit", "Прибыль"): round(r["new_profit"], 2),
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+    # ---- What to ask the client next (feature 4) ----
+    if d["path"] == "real":
+        _missing_items = []
+        if s.aov <= 0:
+            _missing_items.append(tr(
+                "Average order value (AOV) — what does one sale bring in?",
+                "Средний чек — сколько приносит одна продажа?",
+            ))
+        if s.cogs_per_order <= 0:
+            _missing_items.append(tr(
+                "Product cost per order — product, packaging, fulfilment, fees.",
+                "Себестоимость заказа — товар, упаковка, доставка, комиссия эквайринга.",
+            ))
+        if s.real_orders <= 0:
+            _missing_items.append(tr(
+                "Real paid orders — from CRM or bank (not Meta attribution).",
+                "Реальные оплаченные заказы — из CRM или банка (не атрибуция Meta).",
+            ))
+        if s.refund_count <= 0 and s.refund_rate_pct <= 0:
+            _missing_items.append(tr(
+                "Refunds / cancellations — how many orders were returned this period?",
+                "Возвраты / отмены — сколько заказов вернули за этот период?",
+            ))
+        if s.real_conversations <= 0:
+            _missing_items.append(tr(
+                "Real conversations — how many chats were actually about buying (not bots)?",
+                "Реальные обращения — сколько диалогов были реально про покупку (без ботов)?",
+            ))
+
+        _always_items = [
+            tr(
+                "Were there any promotions, discounts, or external events this period?",
+                "Были ли акции, скидки или внешние события в этот период?",
+            ),
+            tr(
+                "Which audience / placement / creative was used?",
+                "Какая аудитория / плейсмент / креатив использовались?",
+            ),
+            tr(
+                "How long does a typical sale take from first message to payment?",
+                "Сколько времени от первого сообщения до оплаты?",
+            ),
+            tr(
+                "Do customers buy again? If yes, what's the average repeat revenue?",
+                "Покупают ли клиенты повторно? Если да — какая средняя повторная выручка?",
+            ),
+        ]
+
+        _exp_label = (
+            tr("⚠️ What to ask the client next", "⚠️ Что спросить у клиента дальше")
+            if _missing_items
+            else tr("✅ What else to ask the client", "✅ Что ещё можно спросить у клиента")
+        )
+        with st.expander(_exp_label, expanded=bool(_missing_items)):
+            if _missing_items:
+                st.caption(tr(
+                    "To complete this analysis, ask the business owner:",
+                    "Чтобы завершить анализ, спросите у владельца бизнеса:",
+                ))
+                for _itm in _missing_items:
+                    st.markdown(f"- ☐ {_itm}")
+                if _always_items:
+                    st.markdown("---")
+                    st.caption(tr("Also useful to ask:", "Также полезно уточнить:"))
+                    for _itm in _always_items:
+                        st.markdown(f"- ☐ {_itm}")
+            else:
+                st.caption(tr(
+                    "All key data is in. You can still ask:",
+                    "Все ключевые данные заполнены. Можно дополнительно спросить:",
+                ))
+                for _itm in _always_items:
+                    st.markdown(f"- ☐ {_itm}")
 
     # ---- Footer nav: Back / Start over ----
     st.markdown('<div class="nav-row"></div>', unsafe_allow_html=True)
