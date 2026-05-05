@@ -873,11 +873,13 @@ def step_numbers_upload():
         st.session_state.reported_spend_input = float(df_msg[col_spend].sum())
         st.session_state.reported_results_input = float(df_msg[col_results].sum())
 
-        # Auto-fill reality fields from the report values if user hasn't entered them yet
-        if st.session_state.actual_paid_spend <= 0:
-            st.session_state.actual_paid_spend = st.session_state.reported_spend_input
-        if st.session_state.real_conversations <= 0:
-            st.session_state.real_conversations = st.session_state.reported_results_input
+        # Pre-fill actual_paid_spend from report ONLY on fresh file load
+        # (never overwrite real_conversations — user must enter that manually)
+        _just_loaded = st.session_state.get("_autofill_done_for") != st.session_state.get("_uploaded_filename")
+        if _just_loaded:
+            if st.session_state.actual_paid_spend <= 0:
+                st.session_state.actual_paid_spend = st.session_state.reported_spend_input
+            st.session_state._autofill_done_for = st.session_state.get("_uploaded_filename")
 
         filtered_indicator_values = sorted(df_msg[col_indicator].dropna().astype(str).unique().tolist())
         sample_values = filtered_indicator_values[:5]
@@ -1914,10 +1916,12 @@ def step_decision():
     st.markdown('<div class="nav-row"></div>', unsafe_allow_html=True)
     cols = st.columns([1, 1, 4, 1, 1])
     with cols[0]:
-        if st.button(tr("← Edit inputs", "← Изменить ввод"), use_container_width=True):
+        if st.button(tr("← Edit inputs", "← Изменить ввод"),
+                     key="decision_edit_inputs", use_container_width=True):
             goto(3)
     with cols[-1]:
-        if st.button(tr("Start over", "Начать заново"), use_container_width=True):
+        if st.button(tr("Start over", "Начать заново"),
+                     key="decision_start_over", use_container_width=True):
             for k in list(st.session_state.keys()):
                 if not k.startswith("_streamlit"):
                     del st.session_state[k]
