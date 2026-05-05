@@ -181,7 +181,7 @@ DEFAULTS = {
     "repeat_purchase_default": "no",
 
     # Step 2 — data source
-    "source_key": "manual_inputs_only",
+    "source_key": "upload_meta_report",
 
     # Step 3 — manual / upload inputs
     "reported_spend_input": 0.0,
@@ -230,6 +230,7 @@ DEFAULTS = {
     "_col_indicator": None,
     "_selected_campaigns": [],
     "_unique_indicators": [],
+    "_manual_mode_forced": False,
 
     # Step 4 — scale simulation (slider keys NOT pre-initialised; defaults are
     # passed via the widget's `value` arg so changing the preset can re-seed
@@ -266,6 +267,20 @@ def money_label(label: str) -> str:
 def goto(n: int):
     st.session_state.wizard_step = n
     st.rerun()
+
+
+def has_uploaded_meta_file() -> bool:
+    """True if a Meta report file is in session — either parsed df or raw widget."""
+    return (
+        st.session_state.get("_uploaded_df") is not None
+        or st.session_state.get("meta_uploader") is not None
+    )
+
+
+def force_upload_source_if_file_exists():
+    """Prevent accidental fallback to manual mode if a file was already loaded."""
+    if has_uploaded_meta_file() and not st.session_state.get("_manual_mode_forced", False):
+        st.session_state.source_key = "upload_meta_report"
 
 
 # Wizard step definitions (label visible on stepper)
@@ -436,6 +451,11 @@ def plot_profit_curve(df_curve):
 # =============================================================================
 st.title(t["title"])
 st.caption(t["subtitle"])
+st.caption(
+    f"Version: meta-upload-route-fix | "
+    f"source={st.session_state.get('source_key')} | "
+    f"uploaded={st.session_state.get('_uploaded_df') is not None}"
+)
 render_stepper()
 
 
@@ -577,13 +597,21 @@ def step_source():
         "Выберите вариант, который соответствует вашим данным сейчас. Можно вернуться и поменять."
     ))
 
-    # Custom card-style radio
+    # Custom card-style radio — track when user *explicitly* picks manual
+    def _on_source_change():
+        chosen = st.session_state.source_key
+        if chosen == "manual_inputs_only":
+            st.session_state._manual_mode_forced = True
+        else:
+            st.session_state._manual_mode_forced = False
+
     st.radio(
         " ",
         options=[k for k, _, _ in source_options],
         format_func=lambda k: next(label for kk, label, _ in source_options if kk == k),
         label_visibility="collapsed",
         key="source_key",
+        on_change=_on_source_change,
     )
 
     chosen_desc = next(desc for k, _, desc in source_options if k == st.session_state.source_key)
@@ -760,6 +788,9 @@ def step_numbers_upload():
             df = read_uploaded_report(uploaded)
             st.session_state._uploaded_df = df
             st.session_state._uploaded_filename = uploaded.name
+            # Lock routing to upload mode the moment a file is successfully read
+            st.session_state.source_key = "upload_meta_report"
+            st.session_state._manual_mode_forced = False
         except Exception as e:
             st.error(f"{tr('Could not read the file.', 'Не удалось прочитать файл.')} {e}")
             st.session_state._uploaded_df = None
@@ -827,6 +858,12 @@ def step_numbers_upload():
 
         st.session_state.reported_spend_input = float(df_msg[col_spend].sum())
         st.session_state.reported_results_input = float(df_msg[col_results].sum())
+
+        # Auto-fill reality fields from the report values if user hasn't entered them yet
+        if st.session_state.actual_paid_spend <= 0:
+            st.session_state.actual_paid_spend = st.session_state.reported_spend_input
+        if st.session_state.real_conversations <= 0:
+            st.session_state.real_conversations = st.session_state.reported_results_input
 
         filtered_indicator_values = sorted(df_msg[col_indicator].dropna().astype(str).unique().tolist())
         sample_values = filtered_indicator_values[:5]
@@ -1254,13 +1291,8 @@ def step_numbers_manual():
 
 
 def step_numbers():
-    # Auto-switch to upload path if a file was already loaded but source_key
-    # was never explicitly changed away from the default.
-    if (
-        st.session_state._uploaded_df is not None
-        and st.session_state.source_key == "manual_inputs_only"
-    ):
-        st.session_state.source_key = "upload_meta_report"
+    # Robustly ensure upload source is set if a file is present
+    force_upload_source_if_file_exists()
 
     if st.session_state.source_key == "новый_бизнес_assumptions_only":
         step_numbers_new_biz()
@@ -1873,10 +1905,7 @@ def step_decision():
     with cols[-1]:
         if st.button(tr("Start over", "Начать заново"), use_container_width=True):
             for k in list(st.session_state.keys()):
-                if not k.startswith("_streamlit"):
-                    del st.session_state[k]
-            for k, v in DEFAULTS.items():
-                st.session_state[k] = v
+                del st.session_state[k]
             st.rerun()
 
 
@@ -1926,10 +1955,7 @@ with st.sidebar:
     st.markdown("---")
     if st.button(tr("Reset all", "Сбросить всё"), use_container_width=True, key="sb_reset"):
         for k in list(st.session_state.keys()):
-            if not k.startswith("_streamlit"):
-                del st.session_state[k]
-        for k, v in DEFAULTS.items():
-            st.session_state[k] = v
+            del st.session_state[k]
         st.rerun()
 
 
