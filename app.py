@@ -12,6 +12,7 @@ from logic import (
     format_money as logic_format_money,
     get_recommendation_v2,
     parse_number_series,
+    plausibility_note,
     safe_div,
     simulate_scale,
 )
@@ -161,6 +162,26 @@ st.markdown(
     /* Source-of-data picker (radio styled as cards) */
     .source-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 6px; }
     @media (max-width: 720px) { .source-grid { grid-template-columns: 1fr; } }
+
+    /* Inline input plausibility warning */
+    .field-warn {
+        font-size: 0.78rem; color: #b45309;
+        background: rgba(245,158,11,0.08);
+        border-left: 3px solid #f59e0b;
+        padding: 6px 10px; border-radius: 0 6px 6px 0;
+        margin: -6px 0 12px 0; line-height: 1.45;
+    }
+
+    /* Derived-from-data callout (a number we computed, not a guess) */
+    .derived-box {
+        font-size: 0.86rem; color: #15803d;
+        background: rgba(34,197,94,0.08);
+        border-left: 3px solid #22c55e;
+        padding: 9px 12px; border-radius: 0 8px 8px 0;
+        margin: 4px 0 10px 0; line-height: 1.5;
+    }
+    .derived-box b { font-weight: 700; }
+    .derived-box .sub { color: #64748b; font-size: 0.78rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -196,6 +217,7 @@ DEFAULTS = {
     "convo_override_active": False,
     "qualified_leads": 0.0,
     "real_orders": 0.0,
+    "repeat_order_count": 0.0,
     "refund_count": 0.0,
     "lead_quality": "mixed",
     "meta_counts_reflect_real": True,
@@ -210,6 +232,8 @@ DEFAULTS = {
     "close_rate": 0.20,
     "close_rate_confidence": "medium",
     "close_rate_source": "guess",
+    "close_rate_use_manual": False,
+    "refund_rate_use_manual": False,
     "real_lead_definition": "осмысленное_обращение",
     "threshold_option": 20,
     "custom_threshold": 20,
@@ -236,6 +260,31 @@ DEFAULTS = {
     # passed via the widget's `value` arg so changing the preset can re-seed
     # the deterioration slider on first render)
     "scale_preset": "realistic",
+
+    # Phase 3 — derive CAC deterioration from history (advanced)
+    "prior_period_cac": 0.0,
+    "current_period_cac": 0.0,
+    "prior_period_spend": 0.0,
+    "current_period_spend": 0.0,
+    "use_derived_deterioration": False,
+
+    # Phase 4 — product mix tiers + multi-channel attribution (advanced)
+    "tier1_name": "Product A",
+    "tier1_share": 0.0,
+    "tier1_aov": 0.0,
+    "tier1_cogs": 0.0,
+    "tier1_refund": 0.0,
+    "tier2_name": "Product B",
+    "tier2_share": 0.0,
+    "tier2_aov": 0.0,
+    "tier2_cogs": 0.0,
+    "tier2_refund": 0.0,
+    "tier3_name": "Product C",
+    "tier3_share": 0.0,
+    "tier3_aov": 0.0,
+    "tier3_cogs": 0.0,
+    "tier3_refund": 0.0,
+    "attribution_pct": 100.0,
 }
 for _k, _v in DEFAULTS.items():
     st.session_state.setdefault(_k, _v)
@@ -262,6 +311,307 @@ def format_money(v):
 
 def money_label(label: str) -> str:
     return label.replace("($)", f"({currency_symbol})")
+
+
+def show_note(field: str, value, aov: float = 0.0):
+    """Render a gentle inline plausibility warning under an input, if warranted."""
+    note = plausibility_note(field, value, lang, aov=aov)
+    if note:
+        st.markdown(f"<div class='field-warn'>⚠️ {note}</div>", unsafe_allow_html=True)
+
+
+def _effective_used_conversations() -> float:
+    """Best available conversation count from the reality-check inputs."""
+    s = st.session_state
+    if s.convo_override_active:
+        return float(s.real_conversations or 0.0)
+    if (s.real_conversations or 0.0) > 0:
+        return float(s.real_conversations)
+    return float(s.reported_results_input or 0.0)
+
+
+def close_rate_block():
+    """Render the close-rate input. If real orders + conversations exist, derive
+    it from those (a fact) and treat any manual entry as an optional override.
+    Phase 2: replaces a guessed input with arithmetic on numbers the user already
+    has. The manual input becomes a fallback only."""
+    s = st.session_state
+    used_conv = _effective_used_conversations()
+    can_derive = (s.real_orders or 0.0) > 0 and used_conv > 0
+
+    if can_derive:
+        derived = float(s.real_orders) / used_conv
+        st.markdown(
+            f"<div class='derived-box'>"
+            f"✓ <b>{tr('Close rate calculated from your real numbers', 'Конверсия посчитана по вашим реальным цифрам')}: "
+            f"{derived:.1%}</b><br>"
+            f"<span class='sub'>{int(s.real_orders)} {tr('orders', 'заказов')} ÷ "
+            f"{int(used_conv)} {tr('conversations', 'обращений')} — "
+            f"{tr('no guessing needed', 'гадать не нужно')}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        if derived > 1.0:
+            st.markdown(
+                f"<div class='field-warn'>⚠️ "
+                f"{tr('More orders than conversations — your conversation count may be incomplete.', 'Заказов больше, чем обращений — возможно, обращения посчитаны не полностью.')}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+        st.checkbox(
+            tr("My real close rate is different — let me enter it manually",
+               "Моя реальная конверсия другая — введу вручную"),
+            key="close_rate_use_manual",
+        )
+        if s.close_rate_use_manual:
+            st.number_input(
+                tr("Close rate — manual override (conversation → order)",
+                   "Конверсия — ручное значение (обращение → заказ)"),
+                min_value=0.0, max_value=1.0, step=0.05, key="close_rate",
+                help=tr("Only override if you know the calculated rate is wrong.",
+                        "Меняйте, только если уверены, что расчётное значение неверно."),
+            )
+            show_note("close_rate", s.close_rate)
+            s.close_rate_source = "guess"
+        else:
+            s.close_rate = derived
+            s.close_rate_source = "real_data"
+    else:
+        st.number_input(
+            tr("Close rate — estimate (conversation → order)",
+               "Конверсия — оценка (обращение → заказ)"),
+            min_value=0.0, max_value=1.0, step=0.05, key="close_rate",
+            help=tr("0.20 means 20%. Once you enter real orders and conversations above, "
+                    "we'll calculate this for you instead.",
+                    "0.20 = 20%. Как только введёте реальные заказы и обращения выше, "
+                    "мы посчитаем это значение за вас."),
+        )
+        show_note("close_rate", s.close_rate)
+
+
+def refund_rate_block():
+    """Phase 6: derive refund_rate_pct from refund_count / real_orders when
+    real data exists. Mirrors the close_rate_block pattern — manual input
+    becomes an opt-in fallback so users stop guessing a number they don't
+    actually need to provide."""
+    s = st.session_state
+    real_orders = float(s.real_orders or 0.0)
+    refund_count = float(s.refund_count or 0.0)
+    can_derive = real_orders > 0
+
+    if can_derive:
+        derived = (refund_count / real_orders) * 100.0
+        st.markdown(
+            f"<div class='derived-box'>"
+            f"✓ <b>{tr('Refund rate calculated from your real numbers', 'Процент возвратов посчитан по вашим реальным цифрам')}: "
+            f"{derived:.1f}%</b><br>"
+            f"<span class='sub'>{int(refund_count)} {tr('refunds', 'возвратов')} ÷ "
+            f"{int(real_orders)} {tr('orders', 'заказов')} — "
+            f"{tr('no guessing needed', 'гадать не нужно')}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        st.checkbox(
+            tr("My real refund rate is different — let me enter it manually",
+               "Мой реальный процент возвратов другой — введу вручную"),
+            key="refund_rate_use_manual",
+        )
+        if s.refund_rate_use_manual:
+            st.number_input(
+                tr("Refund rate (%) — manual override",
+                   "Процент возвратов (%) — ручное значение"),
+                min_value=0.0, max_value=100.0, key="refund_rate_pct",
+                help=tr("Only override if you know the calculated rate is wrong.",
+                        "Меняйте, только если уверены, что расчётное значение неверно."),
+            )
+            show_note("refund_rate_pct", s.refund_rate_pct)
+        else:
+            s.refund_rate_pct = derived
+    else:
+        st.number_input(
+            tr("Refund rate (%) — estimate", "Процент возвратов (%) — оценка"),
+            min_value=0.0, max_value=100.0, key="refund_rate_pct",
+            help=tr("Once you enter real refunds and orders above, we'll calculate this for you.",
+                    "Как только введёте реальные возвраты и заказы выше, мы посчитаем это сами."),
+        )
+        show_note("refund_rate_pct", s.refund_rate_pct)
+
+
+def fill_example_data():
+    """Phase 6: one-click prefill so first-time users can see what an answered
+    form looks like without remembering their own numbers. Sets every relevant
+    field for the current path to a small e-commerce scenario."""
+    s = st.session_state
+    s.aov = 50.0
+    s.cogs_per_order = 20.0
+    s.refund_rate_pct = 8.0  # used by new_biz; real path overrides via derivation
+    s.desired_profit_per_order = 10.0
+    if s.source_key == "новый_бизнес_assumptions_only":
+        s.close_rate = 0.15
+        s.expected_cost_per_conversation = 5.0
+        s.expected_cac_input = 0.0
+        s.assumption_source = "benchmark"
+    else:
+        if s.source_key == "manual_inputs_only":
+            s.reported_spend_input = 2000.0
+            s.reported_results_input = 100.0
+            s.reported_result_type_input = "Conversation"
+        s.actual_paid_spend = 2000.0
+        s.spend_override_active = False
+        s.real_conversations = 80.0
+        s.convo_override_active = False
+        s.real_orders = 12.0
+        s.repeat_order_count = 3.0
+        s.refund_count = 1.0
+        s.qualified_leads = 60.0
+        s.lead_quality = "mixed"
+        s.close_rate_use_manual = False
+        s.close_rate = 0.15
+        s.refund_rate_use_manual = False
+
+
+def render_example_button():
+    """Render the 'Fill with example data' button + a one-line hint above it."""
+    cols = st.columns([3, 2])
+    with cols[1]:
+        if st.button(
+            tr("📋 Fill with example data", "📋 Подставить пример"),
+            key=f"example_btn_step3_{st.session_state.source_key}",
+            use_container_width=True,
+            help=tr(
+                "Pre-fills every field with a sample $2K e-commerce scenario so you can see how it works.",
+                "Заполнит все поля примером ($2K e-commerce), чтобы увидеть, как работает инструмент.",
+            ),
+        ):
+            fill_example_data()
+            st.rerun()
+
+
+def compute_blended_economics():
+    """Phase 4: collapse the (optional) product-mix tiers into a single set of
+    weighted AOV / COGS / refund% figures, plus per-tier rows for display.
+
+    Returns (aov, cogs_per_order, refund_rate_pct, tiers, used_tiers).
+    Falls back to the single AOV/COGS/refund fields when no tier is filled."""
+    s = st.session_state
+    tiers = []
+    for i in (1, 2, 3):
+        share = float(s.get(f"tier{i}_share", 0.0) or 0.0)
+        aov = float(s.get(f"tier{i}_aov", 0.0) or 0.0)
+        if share > 0 and aov > 0:
+            tiers.append({
+                "name": s.get(f"tier{i}_name") or f"Tier {i}",
+                "share": share,
+                "aov": aov,
+                "cogs": float(s.get(f"tier{i}_cogs", 0.0) or 0.0),
+                "refund": float(s.get(f"tier{i}_refund", 0.0) or 0.0),
+            })
+
+    total_share = sum(t["share"] for t in tiers)
+    if not tiers or total_share <= 0:
+        return (
+            float(s.aov or 0.0),
+            float(s.cogs_per_order or 0.0),
+            float(s.refund_rate_pct or 0.0),
+            [],
+            False,
+        )
+
+    blended_aov = sum(t["aov"] * t["share"] / total_share for t in tiers)
+    blended_cogs = sum(t["cogs"] * t["share"] / total_share for t in tiers)
+    blended_refund = sum(t["refund"] * t["share"] / total_share for t in tiers)
+    # Add per-tier break-even CAC so the constraint tier can be flagged later.
+    for t in tiers:
+        refund_cost = t["aov"] * t["refund"] / 100.0
+        t["break_even_cac"] = t["aov"] - t["cogs"] - refund_cost
+    return (blended_aov, blended_cogs, blended_refund, tiers, True)
+
+
+def advanced_economics_block():
+    """Phase 4: optional product-mix and attribution inputs behind a toggle.
+    Casual users never see these. Tiers, when filled, replace the single AOV /
+    COGS / refund inputs via blended weighted averages. Attribution scales the
+    CAC denominator down when other channels also drive new orders."""
+    with st.expander(
+        tr("Advanced: product mix & attribution (optional)",
+           "Дополнительно: разбивка по товарам и атрибуция (необязательно)"),
+        expanded=False,
+    ):
+        st.caption(tr(
+            "Use these only if 'one average order' or 'all spend acquires all orders' "
+            "doesn't describe your business well.",
+            "Заполняйте только если 'один средний чек' или 'весь расход привлекает все заказы' "
+            "не описывают ваш бизнес.",
+        ))
+
+        st.markdown(f"**{tr('Multi-channel attribution', 'Атрибуция по каналам')}**")
+        st.number_input(
+            tr("Share of new-customer orders attributable to THIS ad spend (%)",
+               "Доля заказов новых клиентов, привлечённых ИМЕННО этой рекламой (%)"),
+            min_value=0.0, max_value=100.0, step=5.0,
+            key="attribution_pct",
+            help=tr(
+                "Default 100%. If new orders also come from Google, email, organic, "
+                "or referrals, lower this — we'll exclude the rest from CAC.",
+                "По умолчанию 100%. Если новые заказы приходят и из Google, email, "
+                "органики или рефералов — снизьте процент, лишнее не учтём в CAC.",
+            ),
+        )
+
+        st.markdown("---")
+        st.markdown(f"**{tr('Product mix', 'Разбивка по товарам')}**")
+        st.caption(tr(
+            "Up to 3 product tiers with their own price, cost, and refund rate. "
+            "If shares are set, blended values override the single AOV/COGS/refund above. "
+            "Leave blank to skip.",
+            "До трёх категорий товаров со своей ценой, себестоимостью и возвратами. "
+            "Если доли заданы, средневзвешенные значения заменят одиночные выше. "
+            "Оставьте пустым, чтобы пропустить.",
+        ))
+
+        hdr1, hdr2, hdr3, hdr4, hdr5 = st.columns([2, 1, 1, 1, 1])
+        hdr1.markdown(f"<small><b>{tr('Tier name', 'Название')}</b></small>", unsafe_allow_html=True)
+        hdr2.markdown(f"<small><b>{tr('Share %', 'Доля %')}</b></small>", unsafe_allow_html=True)
+        hdr3.markdown(f"<small><b>AOV</b></small>", unsafe_allow_html=True)
+        hdr4.markdown(f"<small><b>{tr('Cost', 'Cебест.')}</b></small>", unsafe_allow_html=True)
+        hdr5.markdown(f"<small><b>{tr('Refund %', 'Возвр %')}</b></small>", unsafe_allow_html=True)
+
+        for i in (1, 2, 3):
+            c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
+            with c1:
+                st.text_input(f"name{i}", key=f"tier{i}_name", label_visibility="collapsed")
+            with c2:
+                st.number_input(f"share{i}", min_value=0.0, max_value=100.0,
+                                key=f"tier{i}_share", label_visibility="collapsed")
+            with c3:
+                st.number_input(f"aov{i}", min_value=0.0, key=f"tier{i}_aov",
+                                label_visibility="collapsed")
+            with c4:
+                st.number_input(f"cogs{i}", min_value=0.0, key=f"tier{i}_cogs",
+                                label_visibility="collapsed")
+            with c5:
+                st.number_input(f"refund{i}", min_value=0.0, max_value=100.0,
+                                key=f"tier{i}_refund", label_visibility="collapsed")
+
+        blended_aov, blended_cogs, blended_refund, tiers, used = compute_blended_economics()
+        if used:
+            _share_total = sum(t["share"] for t in tiers)
+            _share_warn = ""
+            if abs(_share_total - 100.0) > 0.5:
+                _share_warn = (
+                    f" <span class='sub'>({tr('shares sum to', 'доли в сумме')} "
+                    f"{_share_total:.0f}% — {tr('normalized', 'нормализованы')})</span>"
+                )
+            st.markdown(
+                f"<div class='derived-box'>"
+                f"✓ <b>{tr('Blended from tiers', 'Среднее по категориям')}</b>: "
+                f"AOV {format_money(blended_aov)} · "
+                f"{tr('cost', 'себестоимость')} {format_money(blended_cogs)} · "
+                f"{tr('refunds', 'возвраты')} {blended_refund:.1f}%"
+                f"{_share_warn}"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def goto(n: int):
@@ -405,9 +755,30 @@ def guess_index_from_patterns(cols, patterns):
     return 0
 
 
-def plot_profit_curve(df_curve):
+def plot_profit_curve(df_curve, df_low=None, df_high=None):
+    """Render the profit-vs-spend chart.
+
+    Phase 3: when df_low and df_high are provided, draw an uncertainty band
+    between them (optimistic vs pessimistic scaling efficiency) and the central
+    df_curve line on top. With a single df_curve, behaves as before."""
     fig, ax = plt.subplots(figsize=(8, 4.2))
-    ax.plot(df_curve["ad_spend"], df_curve["profit"], marker="o", linewidth=2)
+    color = "#6366f1"
+    band_color = "#a5b4fc"
+
+    if df_low is not None and df_high is not None:
+        # df_low has lower deterioration (more optimistic) → higher profit (upper bound).
+        # df_high has higher deterioration (more pessimistic) → lower profit (lower bound).
+        ax.fill_between(
+            df_curve["ad_spend"],
+            df_high["profit"],
+            df_low["profit"],
+            alpha=0.22, color=band_color, linewidth=0,
+            label=tr("Uncertainty band (worse ↔ better scaling)",
+                     "Диапазон неопределённости (хуже ↔ лучше)"),
+        )
+
+    ax.plot(df_curve["ad_spend"], df_curve["profit"], marker="o", linewidth=2,
+            color=color, label=tr("Expected", "Ожидаемое"))
     ax.axhline(0, linewidth=1, color="#94a3b8")
 
     current_row = df_curve[df_curve["scale_pct"] == 0]
@@ -415,17 +786,17 @@ def plot_profit_curve(df_curve):
     peak_idx = df_curve["profit"].idxmax()
     peak = df_curve.loc[peak_idx]
 
-    ax.scatter([current["ad_spend"]], [current["profit"]], s=70, zorder=5)
+    ax.scatter([current["ad_spend"]], [current["profit"]], s=70, zorder=5, color=color)
     ax.annotate(t["current_point"], (current["ad_spend"], current["profit"]),
                 textcoords="offset points", xytext=(8, 8))
-    ax.scatter([peak["ad_spend"]], [peak["profit"]], s=70, zorder=5)
+    ax.scatter([peak["ad_spend"]], [peak["profit"]], s=70, zorder=5, color=color)
     ax.annotate(t["peak_point"], (peak["ad_spend"], peak["profit"]),
                 textcoords="offset points", xytext=(8, -16))
 
     breakeven_rows = df_curve[df_curve["profit"] <= 0]
     if len(breakeven_rows) > 0:
         be = breakeven_rows.iloc[0]
-        ax.scatter([be["ad_spend"]], [be["profit"]], s=70, zorder=5)
+        ax.scatter([be["ad_spend"]], [be["profit"]], s=70, zorder=5, color=color)
         ax.annotate(t["breakeven_point"], (be["ad_spend"], be["profit"]),
                     textcoords="offset points", xytext=(8, 8))
 
@@ -434,6 +805,8 @@ def plot_profit_curve(df_curve):
     ax.set_title(t["chart_hdr"])
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
+    if df_low is not None and df_high is not None:
+        ax.legend(loc="best", fontsize=8, frameon=False)
     st.pyplot(fig)
     plt.close(fig)
 
@@ -452,7 +825,7 @@ def plot_profit_curve(df_curve):
 st.title(t["title"])
 st.caption(t["subtitle"])
 st.caption(
-    f"Version: meta-upload-route-fix | "
+    f"Version: phases-1-4-trust-rebuild | "
     f"source={st.session_state.get('source_key')} | "
     f"uploaded={st.session_state.get('_uploaded_df') is not None}"
 )
@@ -637,6 +1010,8 @@ def step_numbers_new_biz():
         "Посчитаем безопасную стоимость клиента и какой бюджет нужен на первый тест."
     ))
 
+    render_example_button()
+
     section_open(
         tr("Order economics", "Экономика заказа"),
         tr("What you charge and what each order costs you to fulfil.",
@@ -662,6 +1037,7 @@ def step_numbers_new_biz():
                 "Прямые затраты на заказ — товар, упаковка, доставка, комиссия эквайринга."
             ),
         )
+        show_note("cogs_per_order", st.session_state.cogs_per_order, aov=st.session_state.aov)
     with c2:
         st.number_input(
             tr("Refund rate (%)", "Процент возвратов (%)"),
@@ -672,6 +1048,7 @@ def step_numbers_new_biz():
                 "Доля заказов, по которым происходит возврат или отмена."
             ),
         )
+        show_note("refund_rate_pct", st.session_state.refund_rate_pct)
         st.number_input(
             money_label(tr("Target profit per order", "Желаемая прибыль с заказа")),
             min_value=0.0,
@@ -683,6 +1060,9 @@ def step_numbers_new_biz():
         )
 
     if st.session_state.repeat_purchase_default == "yes":
+        # TODO(Phase 2): repeat_purchase_value is collected here but is not yet
+        # used in any calculation (compute_decision_state / logic.py). Wire it
+        # into the CAC / break-even math in Phase 2.
         st.number_input(
             money_label(tr("Expected repeat revenue per customer", "Ожидаемая повторная выручка с клиента")),
             min_value=0.0,
@@ -705,10 +1085,13 @@ def step_numbers_new_biz():
             min_value=0.0, max_value=1.0, step=0.05,
             key="close_rate",
             help=tr(
-                "Fraction of conversations that become paid orders. 0.20 means 20%.",
-                "Какая доля обращений становится оплаченным заказом. 0.20 = 20%."
+                "Fraction of conversations that become paid orders. 0.20 means 20%. "
+                "Best taken from real data: paid orders ÷ meaningful conversations over the same period.",
+                "Какая доля обращений становится оплаченным заказом. 0.20 = 20%. "
+                "Лучше взять из реальных данных: оплаченные заказы ÷ осмысленные обращения за тот же период."
             ),
         )
+        show_note("close_rate", st.session_state.close_rate)
         st.number_input(
             money_label(tr("Expected cost per conversation", "Ожидаемая стоимость одного обращения")),
             min_value=0.0,
@@ -771,6 +1154,8 @@ def step_numbers_upload():
         "Upload your Meta report so we can detect spend and conversations. Then add the real-world numbers from your CRM and your unit economics.",
         "Загрузите отчёт Meta — определим расход и обращения. Затем добавьте реальные цифры из CRM и юнит-экономику."
     ))
+
+    render_example_button()
 
     # ---- 1. Upload + auto-detect
     section_open(
@@ -1001,6 +1386,17 @@ def step_numbers_upload():
             ),
         )
         st.number_input(
+            tr("…of which repeat customers", "…из них повторных клиентов"),
+            min_value=0.0,
+            key="repeat_order_count",
+            help=tr(
+                "Orders from customers who had bought before. These weren't acquired by this ad spend, "
+                "so they're excluded from cost-per-new-customer (CAC).",
+                "Заказы от клиентов, которые уже покупали раньше. Их не привлекала эта реклама, "
+                "поэтому они не учитываются в стоимости привлечения нового клиента (CAC)."
+            ),
+        )
+        st.number_input(
             tr("Refunds / cancellations", "Возвраты / отмены"),
             min_value=0.0,
             key="refund_count",
@@ -1054,26 +1450,30 @@ def step_numbers_upload():
                         min_value=0.0, key="cogs_per_order",
                         help=tr("Direct cost — product, packaging, fulfilment, payment fees.",
                                 "Прямые затраты — товар, упаковка, доставка, комиссия эквайринга."))
+        show_note("cogs_per_order", st.session_state.cogs_per_order, aov=st.session_state.aov)
     with e2:
-        st.number_input(tr("Refund rate (%)", "Процент возвратов (%)"),
-                        min_value=0.0, max_value=100.0, key="refund_rate_pct")
+        # Phase 6: refund rate is derived from refund_count / real_orders when
+        # both exist; manual input is the fallback.
+        refund_rate_block()
         st.number_input(money_label(tr("Target profit per order", "Желаемая прибыль с заказа")),
                         min_value=0.0, key="desired_profit_per_order",
                         help=tr("After product cost AND ad cost.",
                                 "После себестоимости И стоимости рекламы."))
 
     if st.session_state.repeat_purchase_default == "yes":
+        # TODO(Phase 2): repeat_purchase_value is collected but not yet used in
+        # any calculation. Wire it into the CAC / break-even math in Phase 2.
         st.number_input(
             money_label(tr("Expected repeat revenue per customer", "Ожидаемая повторная выручка с клиента")),
             min_value=0.0, key="repeat_purchase_value",
         )
 
-    st.number_input(
-        tr("Close rate (conversation → order)", "Конверсия (обращение → заказ)"),
-        min_value=0.0, max_value=1.0, step=0.05, key="close_rate",
-        help=tr("0.20 means 20%. Use real numbers if you have them.",
-                "0.20 = 20%. Используйте реальные данные, если есть."),
-    )
+    # Phase 2: derive the close rate from real data when possible; fall back to
+    # a manual estimate only when there isn't enough data to compute it.
+    close_rate_block()
+
+    # Phase 4: product mix + attribution, opt-in.
+    advanced_economics_block()
 
     with st.expander(tr("Advanced: confidence, threshold, goal", "Дополнительно: уверенность, порог, цель")):
         st.selectbox(
@@ -1084,14 +1484,9 @@ def step_numbers_upload():
                                    "high": tr("High", "Высокая")}[x],
             key="close_rate_confidence",
         )
-        st.selectbox(
-            tr("Close rate is based on", "Откуда взята конверсия"),
-            options=["real_data", "past_campaigns", "guess"],
-            format_func=lambda x: {"real_data": tr("Real history", "Фактические данные"),
-                                   "past_campaigns": tr("Previous campaigns", "Предыдущие кампании"),
-                                   "guess": tr("Guess", "Предположение")}[x],
-            key="close_rate_source",
-        )
+        # Phase 2: close_rate_source is now set automatically by close_rate_block
+        # (real_data when derived, guess when manually overridden) — no need for
+        # a user-facing selectbox here.
         st.selectbox(
             tr("What counts as a real lead?", "Что считать реальным обращением?"),
             options=["any_conversation", "осмысленное_обращение", "qualified_lead", "consultation_booked"],
@@ -1150,6 +1545,8 @@ def step_numbers_manual():
         "Введите, сколько потратили и что получили, плюс юнит-экономику. Остальное посчитаем."
     ))
 
+    render_example_button()
+
     section_open(
         tr("① Ad spend & conversations", "① Расход и обращения"),
         tr("Reported numbers from Meta (or wherever you ran ads).",
@@ -1199,6 +1596,10 @@ def step_numbers_manual():
     with rc2:
         st.number_input(tr("Orders", "Заказы"),
                         min_value=0.0, key="real_orders")
+        st.number_input(tr("…of which repeat customers", "…из них повторных клиентов"),
+                        min_value=0.0, key="repeat_order_count",
+                        help=tr("Orders from customers who had bought before. Excluded from cost-per-new-customer (CAC).",
+                                "Заказы от клиентов, которые уже покупали. Не учитываются в стоимости привлечения нового клиента (CAC)."))
         st.number_input(tr("Refunds / cancellations", "Возвраты / отмены"),
                         min_value=0.0, key="refund_count")
 
@@ -1238,21 +1639,25 @@ def step_numbers_manual():
                         min_value=0.0, key="aov")
         st.number_input(money_label(tr("Product cost per order", "Себестоимость одного заказа")),
                         min_value=0.0, key="cogs_per_order")
+        show_note("cogs_per_order", st.session_state.cogs_per_order, aov=st.session_state.aov)
     with e2:
-        st.number_input(tr("Refund rate (%)", "Процент возвратов (%)"),
-                        min_value=0.0, max_value=100.0, key="refund_rate_pct")
+        # Phase 6: refund rate derived from refund_count / real_orders.
+        refund_rate_block()
         st.number_input(money_label(tr("Target profit per order", "Желаемая прибыль с заказа")),
                         min_value=0.0, key="desired_profit_per_order")
 
     if st.session_state.repeat_purchase_default == "yes":
+        # TODO(Phase 2): repeat_purchase_value is collected but not yet used in
+        # any calculation. Wire it into the CAC / break-even math in Phase 2.
         st.number_input(money_label(tr("Expected repeat revenue per customer",
                                        "Ожидаемая повторная выручка с клиента")),
                         min_value=0.0, key="repeat_purchase_value")
 
-    st.number_input(
-        tr("Close rate (conversation → order)", "Конверсия (обращение → заказ)"),
-        min_value=0.0, max_value=1.0, step=0.05, key="close_rate",
-    )
+    # Phase 2: derive the close rate from real data when possible.
+    close_rate_block()
+
+    # Phase 4: product mix + attribution, opt-in.
+    advanced_economics_block()
 
     with st.expander(tr("Advanced: confidence, threshold, goal", "Дополнительно: уверенность, порог, цель")):
         st.selectbox(
@@ -1263,14 +1668,7 @@ def step_numbers_manual():
                                    "high": tr("High", "Высокая")}[x],
             key="close_rate_confidence",
         )
-        st.selectbox(
-            tr("Close rate is based on", "Откуда взята конверсия"),
-            options=["real_data", "past_campaigns", "guess"],
-            format_func=lambda x: {"real_data": tr("Real history", "Фактические данные"),
-                                   "past_campaigns": tr("Previous campaigns", "Предыдущие кампании"),
-                                   "guess": tr("Guess", "Предположение")}[x],
-            key="close_rate_source",
-        )
+        # Phase 2: close_rate_source is now set automatically by close_rate_block.
         opt = st.selectbox(
             tr("Conversations needed to judge", "Сколько диалогов нужно до оценки"),
             options=[10, 20, 30, "custom"],
@@ -1335,6 +1733,14 @@ def compute_decision_state():
         target_cac = break_even_cac - s.desired_profit_per_order
         gross_margin_pct = safe_div(s.aov - s.cogs_per_order, s.aov) * 100 if s.aov > 0 else 0.0
         target_cac_pct_of_price = safe_div(target_cac, s.aov) * 100 if s.aov > 0 else 0.0
+        # Phase 2: wire repeat_purchase_value into the calculation. We treat
+        # repeat revenue at the same gross margin % as the first order — gives
+        # a defensible LTV-aware break-even shown alongside (not replacing) the
+        # first-order break-even.
+        _repeat_value_nb = s.repeat_purchase_value if s.repeat_purchase_default == "yes" else 0.0
+        _gm_frac_nb = safe_div(s.aov - s.cogs_per_order, s.aov)
+        repeat_contribution = _repeat_value_nb * _gm_frac_nb
+        break_even_cac_with_repeat = break_even_cac + repeat_contribution
         estimated_cac = (
             s.expected_cac_input if s.expected_cac_input > 0
             else safe_div(s.expected_cost_per_conversation, s.close_rate)
@@ -1373,6 +1779,8 @@ def compute_decision_state():
             "recommendation_headline": recommendation_headline,
             "recommendation_points": recommendation_points,
             "break_even_cac": break_even_cac,
+            "break_even_cac_with_repeat": break_even_cac_with_repeat,
+            "repeat_contribution": repeat_contribution,
             "target_cac": target_cac,
             "gross_margin_pct": gross_margin_pct,
             "target_cac_pct_of_price": target_cac_pct_of_price,
@@ -1383,6 +1791,7 @@ def compute_decision_state():
             "scenario_revenue": scenario_revenue,
             "scenario_profit": scenario_profit,
             "real_cac": None,
+            "new_customer_orders": 0.0,
             "true_spend": 0.0,
             "used_conversations": 0.0,
             "cost_per_reported_result": 0.0,
@@ -1408,17 +1817,43 @@ def compute_decision_state():
     spend_is_adjusted = abs(s.actual_paid_spend - reported_spend) > 0.009
     spend_overhead_pct = safe_div(true_spend - reported_spend, reported_spend) * 100 if reported_spend > 0 else 0.0
 
-    refund_cost = s.aov * s.refund_rate_pct / 100.0
-    break_even_cac = s.aov - s.cogs_per_order - refund_cost
+    # Phase 4: blended economics from product tiers if user filled them; else
+    # the single AOV/COGS/refund fields. eff_* are what the rest of the math
+    # uses, so tier mode is transparent to everything downstream.
+    eff_aov, eff_cogs, eff_refund_pct, tiers, used_tiers = compute_blended_economics()
+
+    refund_cost = eff_aov * eff_refund_pct / 100.0
+    break_even_cac = eff_aov - eff_cogs - refund_cost
     target_cac = break_even_cac - s.desired_profit_per_order
-    gross_margin_pct = safe_div(s.aov - s.cogs_per_order, s.aov) * 100 if s.aov > 0 else 0.0
-    target_cac_pct_of_price = safe_div(target_cac, s.aov) * 100 if s.aov > 0 else 0.0
+    gross_margin_pct = safe_div(eff_aov - eff_cogs, eff_aov) * 100 if eff_aov > 0 else 0.0
+    target_cac_pct_of_price = safe_div(target_cac, eff_aov) * 100 if eff_aov > 0 else 0.0
     cost_per_conversation = safe_div(true_spend, used_conversations)
     estimated_cac = safe_div(cost_per_conversation, s.close_rate)
-    real_cac = safe_div(true_spend, s.real_orders) if s.real_orders > 0 else None
+
+    # Phase 2: strip repeat customers out of the CAC denominator. Ad spend
+    # acquires NEW customers; repeat orders weren't paid for here.
+    new_customer_orders = max((s.real_orders or 0.0) - (s.repeat_order_count or 0.0), 0.0)
+    # Phase 4: multi-channel attribution — only the share of new orders the
+    # user attributes to THIS ad spend count toward CAC.
+    _attr_frac = max(0.0, min(1.0, float(s.attribution_pct or 100.0) / 100.0))
+    new_customer_orders_attr = new_customer_orders * _attr_frac
+    real_cac = (
+        safe_div(true_spend, new_customer_orders_attr)
+        if new_customer_orders_attr > 0 else None
+    )
+
+    # Phase 2: wire repeat_purchase_value in. Apply the same gross margin % as
+    # the first order — gives a defensible LTV-aware break-even shown ALONGSIDE
+    # (not replacing) the first-order break-even. Recommendations stay on the
+    # conservative first-order figure.
+    _repeat_value = s.repeat_purchase_value if s.repeat_purchase_default == "yes" else 0.0
+    _gm_frac = safe_div(eff_aov - eff_cogs, eff_aov)
+    repeat_contribution = _repeat_value * _gm_frac
+    break_even_cac_with_repeat = break_even_cac + repeat_contribution
+
     max_cost_per_conversation = max(target_cac, 0.0) * s.close_rate
     recommended_test_budget = threshold * cost_per_conversation
-    has_economics = s.aov > 0 and s.cogs_per_order >= 0
+    has_economics = eff_aov > 0 and eff_cogs >= 0
 
     decision_state = evaluate_decision_state(
         source_key=s.source_key, used_conversations=used_conversations,
@@ -1453,6 +1888,11 @@ def compute_decision_state():
         "used_conversations": used_conversations,
         "spend_overhead_pct": spend_overhead_pct,
         "break_even_cac": break_even_cac,
+        "break_even_cac_with_repeat": break_even_cac_with_repeat,
+        "repeat_contribution": repeat_contribution,
+        "new_customer_orders": new_customer_orders,
+        "new_customer_orders_attr": new_customer_orders_attr,
+        "attribution_pct": float(s.attribution_pct or 100.0),
         "target_cac": target_cac,
         "gross_margin_pct": gross_margin_pct,
         "target_cac_pct_of_price": target_cac_pct_of_price,
@@ -1462,6 +1902,12 @@ def compute_decision_state():
         "max_cost_per_conversation": max_cost_per_conversation,
         "recommended_test_budget": recommended_test_budget,
         "threshold": threshold,
+        # Phase 4 — surface blended economics & tiers for the render code.
+        "aov_effective": eff_aov,
+        "cogs_per_order_effective": eff_cogs,
+        "refund_rate_pct_effective": eff_refund_pct,
+        "tiers": tiers,
+        "used_tiers": used_tiers,
     }
 
 
@@ -1528,15 +1974,27 @@ def step_decision():
             help=tr("Roughly what you should be ready to spend before judging the test.",
                     "Примерный бюджет, который стоит быть готовым потратить до оценки теста."),
         )
+        # Phase 2: surface LTV-aware break-even when repeat revenue is set.
+        _repeat_contrib_nb = float(d.get("repeat_contribution", 0.0))
+        if _repeat_contrib_nb > 0:
+            _be_with_repeat_nb = float(d.get("break_even_cac_with_repeat", d["break_even_cac"]))
+            st.caption(tr(
+                f"With expected repeat revenue, break-even CAC rises to "
+                f"{format_money(_be_with_repeat_nb)} (+{format_money(_repeat_contrib_nb)} per customer).",
+                f"С учётом ожидаемой повторной выручки точка безубытка CAC поднимается до "
+                f"{format_money(_be_with_repeat_nb)} (+{format_money(_repeat_contrib_nb)} с клиента).",
+            ))
     else:
         real_cac_value = d["real_cac"]
         m1, m2, m3 = st.columns(3)
         m1.metric(
-            tr("Real CAC", "Реальный CAC"),
+            tr("Real CAC (per new customer)", "Реальный CAC (за нового клиента)"),
             format_money(real_cac_value) if real_cac_value is not None
-            else tr("No orders yet", "Заказов нет"),
-            help=tr("Actual cost per paying customer = paid spend ÷ orders.",
-                    "Фактическая стоимость клиента = оплачено ÷ заказы."),
+            else tr("No new orders yet", "Новых заказов пока нет"),
+            help=tr("Actual cost per NEW paying customer = paid spend ÷ new-customer orders. "
+                    "Repeat orders are excluded because this ad spend didn't acquire them.",
+                    "Фактическая стоимость нового клиента = оплачено ÷ заказы новых клиентов. "
+                    "Повторные заказы исключены — их не привлекала эта реклама."),
         )
         m2.metric(
             tr("Target CAC", "Желаемая CAC"),
@@ -1545,7 +2003,67 @@ def step_decision():
         m3.metric(
             tr("Break-even CAC", "Точка безубытка по CAC"),
             format_money(d["break_even_cac"]),
+            help=tr("Per first order, before any repeat revenue.",
+                    "За первый заказ, без учёта повторной выручки."),
         )
+
+        # Phase 2: surface attribution + LTV-aware break-even when relevant.
+        _repeat_orders = float(s.repeat_order_count or 0.0)
+        _new_orders = float(d.get("new_customer_orders", 0.0))
+        _repeat_contrib = float(d.get("repeat_contribution", 0.0))
+        _be_with_repeat = float(d.get("break_even_cac_with_repeat", d["break_even_cac"]))
+
+        _notes = []
+        if _repeat_orders > 0 and (s.real_orders or 0) > 0:
+            _notes.append(tr(
+                f"CAC is computed on {int(_new_orders)} new-customer orders "
+                f"({int(_repeat_orders)} repeat orders excluded).",
+                f"CAC посчитан по {int(_new_orders)} заказам новых клиентов "
+                f"({int(_repeat_orders)} повторных заказов исключены).",
+            ))
+        # Phase 4: attribution caption when user dialled it below 100%.
+        _attr_pct_view = float(d.get("attribution_pct", 100.0))
+        if _attr_pct_view < 100.0 and _new_orders > 0:
+            _attributable = float(d.get("new_customer_orders_attr", _new_orders))
+            _notes.append(tr(
+                f"Attribution set to {_attr_pct_view:.0f}% — CAC counts only "
+                f"{_attributable:.1f} of {_new_orders:.0f} new-customer orders.",
+                f"Атрибуция {_attr_pct_view:.0f}% — в CAC учтены только "
+                f"{_attributable:.1f} из {_new_orders:.0f} заказов новых клиентов.",
+            ))
+        if _repeat_contrib > 0:
+            _notes.append(tr(
+                f"With expected repeat revenue, break-even CAC rises to "
+                f"{format_money(_be_with_repeat)} (+{format_money(_repeat_contrib)} per customer).",
+                f"С учётом ожидаемой повторной выручки точка безубытка CAC поднимается до "
+                f"{format_money(_be_with_repeat)} (+{format_money(_repeat_contrib)} с клиента).",
+            ))
+        if _notes:
+            st.caption(" · ".join(_notes))
+
+        # Phase 4: per-tier break-even table when product mix is set.
+        if d.get("used_tiers"):
+            _tiers_data = d.get("tiers", [])
+            if _tiers_data:
+                _tier_rows = [{
+                    tr("Tier", "Категория"): t["name"],
+                    tr("Share %", "Доля %"): round(t["share"], 1),
+                    tr("AOV", "AOV"): round(t["aov"], 2),
+                    tr("Cost", "Себест."): round(t["cogs"], 2),
+                    tr("Refund %", "Возвр %"): round(t["refund"], 1),
+                    tr("Break-even CAC", "Безубыток CAC"): round(t["break_even_cac"], 2),
+                } for t in _tiers_data]
+                _constraint = min(_tiers_data, key=lambda t: t["break_even_cac"])
+                st.markdown(f"**{tr('Per-tier break-even', 'Безубыток по категориям')}**")
+                st.dataframe(pd.DataFrame(_tier_rows), use_container_width=True, hide_index=True)
+                st.caption(tr(
+                    f"Constraint tier: '{_constraint['name']}' caps safe CAC at "
+                    f"{format_money(_constraint['break_even_cac'])}. "
+                    f"If you must keep this tier profitable on its own, the blended figure overstates safe CAC.",
+                    f"Ограничивающая категория: '{_constraint['name']}' держит безопасный CAC на уровне "
+                    f"{format_money(_constraint['break_even_cac'])}. "
+                    f"Если её нужно сохранять прибыльной отдельно — средневзвешенный CAC завышает безопасный уровень.",
+                ))
 
     # ---- Meta vs Reality table (feature 2) ----
     if d["path"] == "real":
@@ -1696,8 +2214,12 @@ def step_decision():
 
             st.markdown(f"**{tr('Order economics', 'Экономика заказа')}**")
             x1, x2, x3 = st.columns(3)
-            x1.metric(tr("AOV", "Средний чек"), format_money(s.aov))
-            x2.metric(tr("Product cost", "Себестоимость"), format_money(s.cogs_per_order))
+            _x_aov = d.get("aov_effective", s.aov)
+            _x_cogs = d.get("cogs_per_order_effective", s.cogs_per_order)
+            _aov_label = tr("AOV (blended)", "Средний чек (средневзв.)") if d.get("used_tiers") else tr("AOV", "Средний чек")
+            _cogs_label = tr("Product cost (blended)", "Себестоимость (средневзв.)") if d.get("used_tiers") else tr("Product cost", "Себестоимость")
+            x1.metric(_aov_label, format_money(_x_aov))
+            x2.metric(_cogs_label, format_money(_x_cogs))
             x3.metric(tr("Gross margin %", "Валовая маржа %"), f"{d['gross_margin_pct']:.1f}%")
 
             st.markdown(f"**{tr('Recommended test budget at this conversation cost',  'Рекомендуемый тестовый бюджет при текущей стоимости диалога')}**")
@@ -1735,6 +2257,8 @@ def step_decision():
         )
         next_budget = (
             format_money(d["recommended_test_budget"])
+            + (tr(" (rough estimate — low confidence)", " (примерно — низкая надёжность)")
+               if low_confidence else "")
             if d["recommended_test_budget"] > 0
             else tr("Need conversation cost first.", "Сначала нужна стоимость диалога.")
         )
@@ -1787,31 +2311,152 @@ def step_decision():
                 key=f"cac_deterioration_{preset}",
             )
 
-            model_revenue = s.aov * s.real_orders
-            model_cogs = s.cogs_per_order * s.real_orders
-            res = simulate_scale(
-                revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
-                orders=s.real_orders, refund_rate_pct=s.refund_rate_pct,
-                spend_change_pct=spend_change_pct,
-                cac_deterioration_per_100_pct=cac_deterioration_per_100,
+            # Phase 3: derive CAC deterioration from a real prior period.
+            with st.expander(
+                tr("Advanced: calculate deterioration from your history",
+                   "Дополнительно: рассчитать снижение по вашей истории"),
+                expanded=False,
+            ):
+                st.caption(tr(
+                    "If you ran ads in a prior period, we can derive your real "
+                    "deterioration from that instead of guessing.",
+                    "Если у вас есть прошлый период, мы можем рассчитать реальное "
+                    "снижение по нему вместо предположения.",
+                ))
+                dc1, dc2 = st.columns(2)
+                with dc1:
+                    st.number_input(
+                        money_label(tr("Prior period — CAC", "Прошлый период — CAC")),
+                        min_value=0.0, key="prior_period_cac",
+                    )
+                    st.number_input(
+                        money_label(tr("Prior period — ad spend", "Прошлый период — расход")),
+                        min_value=0.0, key="prior_period_spend",
+                    )
+                with dc2:
+                    st.number_input(
+                        money_label(tr("Current period — CAC", "Текущий период — CAC")),
+                        min_value=0.0, key="current_period_cac",
+                    )
+                    st.number_input(
+                        money_label(tr("Current period — ad spend", "Текущий период — расход")),
+                        min_value=0.0, key="current_period_spend",
+                    )
+
+                k_derived = None
+                _has_history = (
+                    s.prior_period_cac > 0 and s.current_period_cac > 0
+                    and s.prior_period_spend > 0 and s.current_period_spend > 0
+                )
+                if _has_history:
+                    _g_obs = (s.current_period_spend - s.prior_period_spend) / s.prior_period_spend
+                    if abs(_g_obs) >= 0.05:
+                        _cac_ratio = s.current_period_cac / s.prior_period_cac
+                        _k_raw = ((_cac_ratio - 1) / _g_obs) * 100.0
+                        k_derived = max(0.0, min(100.0, _k_raw))
+                        st.markdown(
+                            f"<div class='derived-box'>"
+                            f"✓ <b>{tr('Deterioration from your data', 'Снижение по вашим данным')}: "
+                            f"{k_derived:.0f}%</b><br>"
+                            f"<span class='sub'>"
+                            f"{tr('Spend changed', 'Бюджет изменился на')} {_g_obs*100:+.0f}%, "
+                            f"{tr('CAC changed', 'CAC изменился на')} {(_cac_ratio-1)*100:+.0f}% — "
+                            f"{tr('no guessing needed', 'гадать не нужно')}"
+                            f"</span></div>",
+                            unsafe_allow_html=True,
+                        )
+                        st.checkbox(
+                            tr("Use this derived deterioration instead of the slider above",
+                               "Использовать расчётное значение вместо ползунка выше"),
+                            key="use_derived_deterioration",
+                        )
+                    else:
+                        st.caption(tr(
+                            "Spend change between periods is too small to derive a reliable rate (need ≥5%).",
+                            "Изменение бюджета между периодами слишком мало для надёжного расчёта (нужно ≥5%).",
+                        ))
+
+            # Phase 3: central deterioration — derived if user opted in, else slider.
+            k_mid = (
+                float(k_derived) if (k_derived is not None and s.use_derived_deterioration)
+                else float(cac_deterioration_per_100)
             )
-            safe_scale_pct = find_safe_max_scale_pct(
+            k_low = max(0.0, k_mid - 15.0)   # more optimistic
+            k_high = min(100.0, k_mid + 25.0)  # more pessimistic
+
+            # Phase 4: use blended (tier-aware) economics when product mix is set.
+            _eff_aov = d.get("aov_effective", s.aov)
+            _eff_cogs = d.get("cogs_per_order_effective", s.cogs_per_order)
+            _eff_refund = d.get("refund_rate_pct_effective", s.refund_rate_pct)
+            model_revenue = _eff_aov * s.real_orders
+            model_cogs = _eff_cogs * s.real_orders
+
+            def _sim(pct, k):
+                return simulate_scale(
+                    revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
+                    orders=s.real_orders, refund_rate_pct=_eff_refund,
+                    spend_change_pct=pct, cac_deterioration_per_100_pct=k,
+                )
+
+            def _curve(k):
+                return build_profit_curve(
+                    revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
+                    orders=s.real_orders, refund_rate_pct=_eff_refund,
+                    cac_deterioration_per_100_pct=k,
+                )
+
+            res = _sim(spend_change_pct, k_mid)
+            res_low = _sim(spend_change_pct, k_low)
+            res_high = _sim(spend_change_pct, k_high)
+
+            df_curve_mid = _curve(k_mid)
+            df_curve_low = _curve(k_low)   # optimistic → upper bound
+            df_curve_high = _curve(k_high)  # pessimistic → lower bound
+
+            safe_mid = find_safe_max_scale_pct(
                 revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
-                orders=s.real_orders, refund_rate_pct=s.refund_rate_pct,
-                cac_deterioration_per_100_pct=cac_deterioration_per_100,
-                max_search_pct=300,
+                orders=s.real_orders, refund_rate_pct=_eff_refund,
+                cac_deterioration_per_100_pct=k_mid, max_search_pct=300,
             )
-            df_curve = build_profit_curve(
+            safe_low = find_safe_max_scale_pct(
                 revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
-                orders=s.real_orders, refund_rate_pct=s.refund_rate_pct,
-                cac_deterioration_per_100_pct=cac_deterioration_per_100,
+                orders=s.real_orders, refund_rate_pct=_eff_refund,
+                cac_deterioration_per_100_pct=k_high, max_search_pct=300,
             )
-            _, _, cliff_detected = plot_profit_curve(df_curve)
+            safe_high = find_safe_max_scale_pct(
+                revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
+                orders=s.real_orders, refund_rate_pct=_eff_refund,
+                cac_deterioration_per_100_pct=k_low, max_search_pct=300,
+            )
+
+            _, _, cliff_detected = plot_profit_curve(
+                df_curve_mid, df_low=df_curve_low, df_high=df_curve_high,
+            )
+            st.caption(tr(
+                "Shaded band = profit if scaling is more / less efficient than your central estimate. "
+                "When inputs are uncertain, the band widens — treat the band, not the line, as the answer.",
+                "Заштрихованная полоса = прибыль, если рост окажется лучше или хуже центральной оценки. "
+                "Когда исходные данные неточные, полоса шире — ориентируйтесь на полосу, а не на линию.",
+            ))
 
             sm1, sm2, sm3 = st.columns(3)
             sm1.metric(tr("Forecast spend", "Расход в расчёте"), format_money(res["new_spend"]))
-            sm2.metric(tr("Forecast profit", "Прибыль в расчёте"), format_money(res["new_profit"]))
-            sm3.metric(tr("Safe scale limit", "Безопасный лимит роста"), f"{safe_scale_pct}%")
+            sm2.metric(
+                tr("Forecast profit (range)", "Прибыль (диапазон)"),
+                f"{format_money(res_high['new_profit'])} – {format_money(res_low['new_profit'])}",
+                help=tr(
+                    f"Pessimistic – optimistic scaling. Central estimate: {format_money(res['new_profit'])}.",
+                    f"Пессимистично – оптимистично. Центральная оценка: {format_money(res['new_profit'])}.",
+                ),
+            )
+            sm3.metric(
+                tr("Safe scale limit (range)", "Безопасный лимит роста (диапазон)"),
+                f"{safe_low}% – {safe_high}%",
+                help=tr(
+                    f"Pessimistic – optimistic. Central estimate: {safe_mid}%.",
+                    f"Пессимистично – оптимистично. Центральная оценка: {safe_mid}%.",
+                ),
+            )
 
             if cliff_detected:
                 st.warning(tr(
@@ -1822,19 +2467,18 @@ def step_decision():
             scenarios = [-50, -25, 0, 25, 50, 100, 150, 200]
             rows = []
             for pct in scenarios:
-                r = simulate_scale(
-                    revenue=model_revenue, cogs=model_cogs, ad_spend=d["true_spend"],
-                    orders=s.real_orders, refund_rate_pct=s.refund_rate_pct,
-                    spend_change_pct=pct,
-                    cac_deterioration_per_100_pct=cac_deterioration_per_100,
-                )
+                r_mid = _sim(pct, k_mid)
+                r_low = _sim(pct, k_low)
+                r_high = _sim(pct, k_high)
                 rows.append({
                     tr("Spend change %", "Изменение бюджета, %"): pct,
-                    tr("Ad spend", "Расход"): round(r["new_spend"], 2),
-                    tr("CAC", "CAC"): round(r["new_cac"], 2) if r["new_cac"] > 0 else None,
-                    tr("Orders", "Заказы"): round(r["new_orders"], 1),
-                    tr("Revenue", "Выручка"): round(r["new_revenue"], 2),
-                    tr("Profit", "Прибыль"): round(r["new_profit"], 2),
+                    tr("Ad spend", "Расход"): round(r_mid["new_spend"], 2),
+                    tr("CAC", "CAC"): round(r_mid["new_cac"], 2) if r_mid["new_cac"] > 0 else None,
+                    tr("Orders", "Заказы"): round(r_mid["new_orders"], 1),
+                    tr("Revenue", "Выручка"): round(r_mid["new_revenue"], 2),
+                    tr("Profit (expected)", "Прибыль (ожидаемая)"): round(r_mid["new_profit"], 2),
+                    tr("Profit range (low – high)", "Диапазон (низ – верх)"):
+                        f"{format_money(r_high['new_profit'])} – {format_money(r_low['new_profit'])}",
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
 

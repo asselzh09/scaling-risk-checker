@@ -65,6 +65,81 @@ def is_projection_only(meta_convos):
     return meta_convos < 10
 
 
+# ---------------------------------------------------------------------------
+# Phase 1 — input plausibility checks
+# Gentle, benchmark-based warnings for values a user is likely unsure about.
+# Returns a single localized string, or None if the value looks fine.
+# ---------------------------------------------------------------------------
+def plausibility_note(field, value, lang, aov=0.0):
+    def tr(en, ru):
+        return en if lang == "English" else ru
+
+    try:
+        value = float(value) if value is not None else 0.0
+    except (TypeError, ValueError):
+        return None
+    try:
+        aov = float(aov) if aov is not None else 0.0
+    except (TypeError, ValueError):
+        aov = 0.0
+
+    if field == "close_rate":
+        if value <= 0:
+            return None
+        if value > 0.6:
+            return tr(
+                f"{value:.0%} is unusually high for conversation-to-order. "
+                "Make sure this is paid orders divided by meaningful conversations — "
+                "not clicks or add-to-carts.",
+                f"{value:.0%} — необычно высокая конверсия из обращения в заказ. "
+                "Убедитесь, что это оплаченные заказы, делённые на осмысленные обращения, "
+                "а не клики или корзины.",
+            )
+        if value < 0.03:
+            return tr(
+                f"{value:.0%} is very low. If that is real, paid acquisition will be "
+                "expensive — check that junk or bot chats are not inflating the "
+                "conversation count.",
+                f"{value:.0%} — очень низкая конверсия. Если это так, платное привлечение "
+                "будет дорогим — проверьте, что мусорные или бот-диалоги не завышают "
+                "число обращений.",
+            )
+        return None
+
+    if field == "refund_rate_pct":
+        if value <= 0:
+            return None
+        if value > 30:
+            return tr(
+                f"{value:.0f}% returns is very high. Confirm this is the share of "
+                "orders refunded, not a count.",
+                f"{value:.0f}% возвратов — это очень много. Убедитесь, что это доля "
+                "возвращённых заказов, а не их количество.",
+            )
+        return None
+
+    if field == "cogs_per_order":
+        if value <= 0 or aov <= 0:
+            return None
+        if value >= aov:
+            return tr(
+                "Product cost is at or above the order value — there is no margin "
+                "left for ads or profit. Double-check both numbers.",
+                "Себестоимость не ниже среднего чека — на рекламу и прибыль не "
+                "остаётся ничего. Перепроверьте обе цифры.",
+            )
+        if value / aov > 0.8:
+            return tr(
+                f"Product cost is {value / aov:.0%} of the order value — very little "
+                "room left for ad spend.",
+                f"Себестоимость составляет {value / aov:.0%} от среднего чека — "
+                "на рекламу почти не остаётся места.",
+            )
+        return None
+
+    return None
+
+
 def simulate_scale(
     revenue: float,
     cogs: float,
@@ -498,60 +573,124 @@ def get_recommendation_v2(
         return headline, body
 
     if mode_key == "ранний_тест":
-        headline = _tr(lang, "Early test: collect more evidence", "Ранний тест: соберите больше данных")
+        # Low-confidence mode: hold back. Give context, not a spend recommendation.
+        headline = _tr(lang, "Not enough data yet — keep testing", "Данных пока недостаточно — продолжайте тест")
         track_metric = (
             _tr(lang, "actual paid spend and real conversations", "фактически оплаченный расход и реальные диалоги")
             if real_orders <= 0
             else _tr(lang, "qualified leads, first orders, and refunds", "квалифицированные обращения, первые заказы и возвраты")
         )
+        caution = _tr(
+            lang,
+            "There is not enough evidence here to recommend a spend level. Treat the numbers below as context, not advice.",
+            "Здесь недостаточно данных, чтобы рекомендовать уровень бюджета. Считайте цифры ниже контекстом, а не рекомендацией.",
+        )
+        cpc_line = _tr(
+            lang,
+            f"Current cost per conversation: {format_money(cost_per_conversation, currency_symbol)}",
+            f"Текущая стоимость обращения: {format_money(cost_per_conversation, currency_symbol)}",
+        )
+        target_cpc_line = _tr(
+            lang,
+            f"Target max cost per conversation: {format_money(max_cost_per_conversation, currency_symbol)}",
+            f"Целевая максимальная стоимость обращения: {format_money(max_cost_per_conversation, currency_symbol)}",
+        )
+        budget_line = _tr(
+            lang,
+            f"Rough planning figure only — collecting {int(target_conversations)} conversations at today's cost "
+            f"would take about {format_money(recommended_test_budget, currency_symbol)}. This is not a spend recommendation.",
+            f"Только ориентир для планирования — чтобы собрать {int(target_conversations)} обращений по текущей цене, "
+            f"потребуется примерно {format_money(recommended_test_budget, currency_symbol)}. Это не рекомендация по бюджету.",
+        )
         if max_cost_per_conversation > 0 and cost_per_conversation > max_cost_per_conversation * 1.15:
-            body = [
-                _tr(lang, f"Current cost per conversation: {format_money(cost_per_conversation, currency_symbol)}", f"Текущая стоимость обращения: {format_money(cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Target max cost per conversation: {format_money(max_cost_per_conversation, currency_symbol)}", f"Целевая максимальная стоимость обращения: {format_money(max_cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Budget to reach {int(target_conversations)} conversations: {format_money(recommended_test_budget, currency_symbol)}", f"Бюджет, чтобы дойти до {int(target_conversations)} обращений: {format_money(recommended_test_budget, currency_symbol)}"),
-                _tr(lang, f"Current signal looks expensive for testing. Track {track_metric} next.", f"Текущий сигнал выглядит дорогим даже для теста. Дальше отслеживайте {track_metric}."),
-            ]
+            signal_line = _tr(
+                lang,
+                f"The current signal looks expensive even for testing. Track {track_metric} next.",
+                f"Текущий сигнал выглядит дорогим даже для теста. Дальше отслеживайте {track_metric}.",
+            )
         elif max_cost_per_conversation > 0 and cost_per_conversation > max_cost_per_conversation:
-            body = [
-                _tr(lang, f"Current cost per conversation: {format_money(cost_per_conversation, currency_symbol)}", f"Текущая стоимость обращения: {format_money(cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Target max cost per conversation: {format_money(max_cost_per_conversation, currency_symbol)}", f"Целевая максимальная стоимость обращения: {format_money(max_cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Budget to reach {int(target_conversations)} conversations: {format_money(recommended_test_budget, currency_symbol)}", f"Бюджет, чтобы дойти до {int(target_conversations)} обращений: {format_money(recommended_test_budget, currency_symbol)}"),
-                _tr(lang, f"Current signal is borderline. Collect more evidence carefully and track {track_metric} next.", f"Текущие цифры пограничные. Аккуратно соберите больше данных и дальше отслеживайте {track_metric}."),
-            ]
+            signal_line = _tr(
+                lang,
+                f"The current signal is borderline. Collect more evidence carefully and track {track_metric} next.",
+                f"Текущие цифры пограничные. Аккуратно соберите больше данных и дальше отслеживайте {track_metric}.",
+            )
         else:
-            body = [
-                _tr(lang, f"Current cost per conversation: {format_money(cost_per_conversation, currency_symbol)}", f"Текущая стоимость обращения: {format_money(cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Target max cost per conversation: {format_money(max_cost_per_conversation, currency_symbol)}", f"Целевая максимальная стоимость обращения: {format_money(max_cost_per_conversation, currency_symbol)}"),
-                _tr(lang, f"Budget to reach {int(target_conversations)} conversations: {format_money(recommended_test_budget, currency_symbol)}", f"Бюджет, чтобы дойти до {int(target_conversations)} обращений: {format_money(recommended_test_budget, currency_symbol)}"),
-                _tr(lang, f"The current signal may be workable, but there is not enough evidence yet. Track {track_metric} next.", f"Текущие цифры могут быть рабочими, но данных пока недостаточно. Дальше отслеживайте {track_metric}."),
-            ]
+            signal_line = _tr(
+                lang,
+                f"The current signal may be workable, but there is not enough evidence yet. Track {track_metric} next.",
+                f"Текущие цифры могут быть рабочими, но данных пока недостаточно. Дальше отслеживайте {track_metric}.",
+            )
+        body = [caution, cpc_line, target_cpc_line, signal_line, budget_line]
         return headline, body
 
+    # Phase 4: evidence-backed recommendations. Each branch shows the number(s)
+    # and threshold that triggered it, so the user can see WHY — not just WHAT.
     refund_order_rate = safe_div(refund_count, real_orders) if real_orders > 0 else 0.0
     if refund_order_rate >= 0.10 or (refund_count >= 3 and refund_order_rate >= 0.05):
         return _tr(lang, "Fix refunds first", "Сначала разберитесь с возвратами"), [
             _tr(
                 lang,
-                f"Refunds are {refund_order_rate:.1%} of orders, which reduces how much CAC the business can safely afford.",
-                f"Возвраты составляют {refund_order_rate:.1%} от заказов и уменьшают безопасную стоимость привлечения клиента.",
+                f"Refunds are {refund_order_rate:.1%} of orders ({int(refund_count)} of "
+                f"{int(real_orders)}), above the 10% threshold where they materially "
+                f"reduce safe CAC. Fix this before scaling spend.",
+                f"Возвраты составляют {refund_order_rate:.1%} от заказов ({int(refund_count)} "
+                f"из {int(real_orders)}), выше порога 10%, при котором они заметно снижают "
+                f"безопасный CAC. Решите это до роста бюджета.",
             ),
         ]
     if lead_quality == "weak":
         return _tr(lang, "Improve lead quality", "Улучшите качество обращений"), [
-            _tr(lang, "The platform may be finding cheap but low-value conversations.", "Реклама может приводить дешёвые, но слабые по качеству обращения."),
+            _tr(lang,
+                "You marked lead quality as 'weak' — cheap conversations that don't convert "
+                "make CAC look better than it really is. Tighten the audience or creative first.",
+                "Вы отметили качество обращений как «слабое» — дешёвые диалоги, которые не "
+                "конвертируются, занижают видимый CAC. Сначала сузьте аудиторию или поправьте креатив."),
         ]
     if break_even_cac <= 0:
         return _tr(lang, "Improve margin first", "Сначала увеличьте прибыль с заказа"), [
-            _tr(lang, "The first-order economics do not currently support paid acquisition.", "Экономика первого заказа сейчас не поддерживает платное привлечение."),
+            _tr(lang,
+                f"Break-even CAC is {format_money(break_even_cac, currency_symbol)} — your "
+                f"first-order economics can't support any paid acquisition. Raise AOV or cut "
+                f"product cost before touching ad spend.",
+                f"Точка безубытка CAC = {format_money(break_even_cac, currency_symbol)} — "
+                f"экономика первого заказа не поддерживает платное привлечение. Сначала повысьте "
+                f"средний чек или снизьте себестоимость, и только потом — рекламу."),
         ]
     if real_cac and target_cac > 0 and real_cac <= target_cac * 0.85:
+        _gap_pct = (1 - real_cac / target_cac) * 100
         return _tr(lang, "Scale gradually", "Увеличивайте бюджет постепенно"), [
-            _tr(lang, "Real CAC is below target CAC with enough evidence to expand carefully.", "Реальная стоимость привлечения клиента ниже целевого уровня, и данных уже достаточно для аккуратного роста."),
+            _tr(lang,
+                f"Real CAC {format_money(real_cac, currency_symbol)} is {_gap_pct:.0f}% "
+                f"below target CAC {format_money(target_cac, currency_symbol)} — you have "
+                f"room to scale carefully. Watch whether CAC stays under target as spend rises.",
+                f"Реальный CAC {format_money(real_cac, currency_symbol)} на {_gap_pct:.0f}% "
+                f"ниже целевого {format_money(target_cac, currency_symbol)} — есть запас для "
+                f"осторожного роста. Следите, чтобы CAC не превысил целевой при росте бюджета."),
         ]
     if real_cac and break_even_cac > 0 and real_cac > break_even_cac:
+        _over_pct = (real_cac / break_even_cac - 1) * 100
         return _tr(lang, "Reduce spend", "Снизьте бюджет"), [
-            _tr(lang, "Real CAC is above break-even CAC, so current growth is destroying profit.", "Реальная стоимость привлечения клиента выше уровня безубыточности, поэтому текущий рост уничтожает прибыль."),
+            _tr(lang,
+                f"Real CAC {format_money(real_cac, currency_symbol)} is {_over_pct:.0f}% "
+                f"above break-even {format_money(break_even_cac, currency_symbol)} — current "
+                f"growth is destroying profit on every new customer.",
+                f"Реальный CAC {format_money(real_cac, currency_symbol)} на {_over_pct:.0f}% "
+                f"выше уровня безубытка {format_money(break_even_cac, currency_symbol)} — "
+                f"текущий рост уничтожает прибыль на каждом новом клиенте."),
+        ]
+    if real_cac and target_cac > 0 and break_even_cac > 0:
+        return _tr(lang, "Hold current spend", "Оставьте текущий бюджет"), [
+            _tr(lang,
+                f"Real CAC {format_money(real_cac, currency_symbol)} sits between target "
+                f"({format_money(target_cac, currency_symbol)}) and break-even "
+                f"({format_money(break_even_cac, currency_symbol)}) — profitable but no "
+                f"safety margin. Keep collecting data or improve conversion before pushing spend.",
+                f"Реальный CAC {format_money(real_cac, currency_symbol)} между целевым "
+                f"({format_money(target_cac, currency_symbol)}) и безубытком "
+                f"({format_money(break_even_cac, currency_symbol)}) — прибыль есть, но без "
+                f"запаса. Сначала соберите больше данных или улучшите продажи."),
         ]
     return _tr(lang, "Hold current spend", "Оставьте текущий бюджет"), [
-        _tr(lang, "Keep collecting data or improve conversion before scaling harder.", "Продолжайте собирать данные или сначала улучшите продажи."),
+        _tr(lang, "Keep collecting data or improve conversion before scaling harder.",
+            "Продолжайте собирать данные или сначала улучшите продажи."),
     ]
